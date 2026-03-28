@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dea</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400&display=swap" rel="stylesheet">
+<style>
+/* ═══ VARIABLES ═══ */
+:root {
+  --bg: #f7f4ef;
+  --surface: #ffffff;
+  --ink: #1a1814;
+  --ink-muted: #6b6560;
+  --gold: #b8996a;
+  --gold-light: #e8dcc8;
+  --border: #e2dcd4;
+  --card-w: 220px;
+  --card-h: 380px;
+  --font-serif: 'Cormorant Garamond', serif;
+  --font-sans: 'Jost', sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 40px;
+  --toast-success: #4a7c59;
+  --toast-error: #a05050;
+  --toast-info: var(--gold);
+}
+
+/* ═══ RESET & BASE ═══ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-weight: 300;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 24px 80px;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* ═══ HEADER ═══ */
+header { text-align: center; margin-bottom: 56px; animation: fadeUp 0.8s ease both; }
+
+.date-label {
+  font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--gold); margin-bottom: 12px;
+}
+
+h1 { font-family: var(--font-serif); font-weight: 300; font-size: clamp(36px, 6vw, 52px); letter-spacing: 0.02em; line-height: 1.1; }
+h1 em { font-style: italic; color: var(--ink-muted); }
+
+.divider { width: 40px; height: 1px; background: var(--gold); margin: 20px auto 0; opacity: 0.6; }
+
+.natal-badge {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 14px;
+  font-size: 11px; letter-spacing: 0.1em; color: var(--ink-muted);
+  background: var(--gold-light); border-radius: 20px; padding: 5px 14px;
+  cursor: pointer; transition: background 0.2s;
+}
+.natal-badge:hover { background: var(--gold); color: #fff; }
+.natal-badge .nb-sign { font-size: 15px; }
+
+/* ═══ MODE TABS ═══ */
+.mode-tabs {
+  display: flex; gap: 0; border: 1px solid var(--border); border-radius: var(--radius-pill);
+  padding: 4px; margin-bottom: 40px; animation: fadeUp 0.8s 0.1s ease both; background: var(--surface);
+}
+.mode-tab {
+  padding: 10px 28px; border-radius: 32px; border: none; background: none;
+  font-family: var(--font-sans); font-size: 12px; font-weight: 300;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-muted);
+  cursor: pointer; transition: background 0.2s, color 0.2s;
+}
+.mode-tab.active { background: var(--ink); color: #fff; }
+
+/* ═══ CARD ═══ */
+.card-area { position: relative; width: var(--card-w); height: var(--card-h); perspective: 1000px; margin-bottom: 40px; animation: fadeUp 0.8s 0.2s ease both; }
+.card-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1); }
+.card-inner.flipped { transform: rotateY(180deg); }
+.card-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06); }
+
+.card-back { background: var(--surface); display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--border); transition: box-shadow 0.3s; }
+.card-back:hover { box-shadow: 0 12px 50px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.07); }
+.card-back-pattern { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
+.card-back-pattern svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.12; }
+.card-back-symbol { font-size: 48px; position: relative; z-index: 1; filter: drop-shadow(0 2px 8px rgba(184,153,106,0.3)); }
+
+.card-front { background: var(--surface); transform: rotateY(180deg); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 20px; gap: 12px; }
+.card-arcana-badge { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); font-family: var(--font-sans); }
+.card-symbol-large { font-size: 72px; line-height: 1; margin: 8px 0; }
+.card-name { font-family: var(--font-serif); font-size: 22px; font-weight: 400; text-align: center; line-height: 1.2; }
+.card-keywords { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); text-align: center; margin-top: 4px; }
+
+/* ═══ DRAW BUTTON ═══ */
+.draw-btn {
+  display: flex; align-items: center; gap: 10px; background: none; border: 1px solid var(--gold);
+  color: var(--ink); font-family: var(--font-sans); font-weight: 300; font-size: 12px;
+  letter-spacing: 0.18em; text-transform: uppercase; padding: 14px 32px;
+  border-radius: var(--radius-pill); cursor: pointer; transition: background 0.25s, color 0.25s;
+  animation: fadeUp 0.8s 0.35s ease both; margin-bottom: 48px;
+}
+.draw-btn:hover { background: var(--gold); color: #fff; }
+.draw-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* ═══ READING ═══ */
+.reading-area { max-width: 560px; width: 100%; animation: fadeUp 0.8s ease both; }
+.reading-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 36px 40px; }
+.reading-title { font-family: var(--font-serif); font-size: 13px; font-style: italic; color: var(--gold); letter-spacing: 0.08em; margin-bottom: 16px; }
+.reading-text { font-family: var(--font-serif); font-size: 19px; line-height: 1.75; color: var(--ink); font-weight: 300; }
+.reading-text.loading { color: var(--ink-muted); font-style: italic; font-size: 16px; animation: pulse 2s ease-in-out infinite; }
+.cursor { display: inline-block; width: 2px; height: 1em; background: var(--gold); vertical-align: text-bottom; animation: blink 1s step-end infinite; margin-left: 2px; }
+
+/* ═══ API NOTICE ═══ */
+.api-notice { max-width: 560px; width: 100%; margin-top: 32px; padding: 20px 24px; background: var(--gold-light); border-radius: var(--radius-md); font-size: 13px; color: var(--ink-muted); line-height: 1.7; animation: fadeUp 0.8s 0.5s ease both; }
+.api-notice a { color: var(--gold); text-decoration: none; }
+.api-notice a:hover { text-decoration: underline; }
+.api-key-row { display: flex; gap: 8px; margin-top: 12px; }
+.api-key-input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-sans); font-size: 13px; background: #fff; color: var(--ink); outline: none; }
+.api-key-input:focus { border-color: var(--gold); }
+.api-key-btn { padding: 10px 18px; background: var(--gold); color: #fff; border: none; border-radius: var(--radius-sm); font-family: var(--font-sans); font-size: 12px; letter-spacing: 0.08em; cursor: pointer; transition: opacity 0.2s; }
+.api-key-btn:hover { opacity: 0.85; }
+.api-key-saved { display: inline-block; margin-top: 8px; font-size: 12px; color: var(--gold); }
+
+/* ═══ PROFILE DRAWER ═══ */
+.profile-icon-btn { position: fixed; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 200; transition: border-color 0.2s, box-shadow 0.2s; padding: 0; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+.profile-icon-btn:hover { border-color: var(--gold); }
+.profile-icon-btn img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: none; }
+.profile-icon-btn .profile-icon-placeholder { font-size: 16px; color: var(--ink-muted); }
+.profile-drawer-overlay { position: fixed; inset: 0; background: rgba(26,24,20,0.3); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.profile-drawer-overlay.open { opacity: 1; pointer-events: all; }
+.profile-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 92vw); background: var(--surface); z-index: 301; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; box-shadow: -8px 0 40px rgba(0,0,0,0.10); overflow-y: auto; }
+.profile-drawer.open { transform: translateX(0); }
+.drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 24px 24px 0; flex-shrink: 0; }
+.drawer-title { font-family: var(--font-serif); font-size: 24px; font-weight: 300; }
+.drawer-close { background: none; border: none; font-size: 22px; color: var(--ink-muted); cursor: pointer; padding: 4px; line-height: 1; transition: color 0.2s; }
+.drawer-close:hover { color: var(--ink); }
+.drawer-user { display: flex; align-items: center; gap: 12px; padding: 20px 24px 24px; border-bottom: 1px solid var(--border); }
+.drawer-user img { width: 44px; height: 44px; border-radius: 50%; display: none; }
+.drawer-user-info { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.drawer-user-name { font-size: 15px; color: var(--ink); }
+.drawer-user-email { font-size: 11px; color: var(--ink-muted); letter-spacing: 0.03em; }
+.drawer-signout { font-size: 11px; color: var(--gold); background: none; border: 1px solid var(--gold-light); border-radius: 20px; padding: 6px 14px; cursor: pointer; letter-spacing: 0.08em; transition: background 0.2s; white-space: nowrap; }
+.drawer-signout:hover { background: var(--gold-light); }
+.drawer-logged-out-text { font-size: 14px; color: var(--ink-muted); line-height: 1.7; margin-bottom: 20px; font-family: var(--font-serif); font-style: italic; }
+.drawer-google-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 13px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-family: var(--font-sans); font-size: 13px; letter-spacing: 0.08em; color: var(--ink); cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s; margin-bottom: 20px; }
+.drawer-google-btn:hover { border-color: var(--gold); box-shadow: 0 4px 16px rgba(184,153,106,0.12); }
+.drawer-benefits { display: flex; flex-direction: column; gap: 8px; }
+.drawer-benefit { font-size: 12px; color: var(--ink-muted); letter-spacing: 0.04em; line-height: 1.5; }
+.drawer-section { padding: 24px 24px 0; }
+.drawer-section-title { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; }
+.profile-grid { display: flex; flex-direction: column; gap: 14px; }
+.profile-field { display: flex; flex-direction: column; gap: 6px; }
+.profile-label { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); }
+.profile-input { padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-sans); font-size: 14px; font-weight: 300; background: var(--bg); color: var(--ink); outline: none; transition: border-color 0.2s; width: 100%; }
+.profile-input:focus { border-color: var(--gold); background: #fff; }
+.profile-input.invalid { border-color: var(--toast-error); }
+.profile-subtitle { font-size: 12px; color: var(--ink-muted); line-height: 1.6; margin-bottom: 14px; font-family: var(--font-serif); font-style: italic; }
+.profile-save-row { display: flex; align-items: center; gap: 14px; margin-top: 24px; }
+.profile-save-btn { padding: 11px 28px; background: var(--ink); color: #fff; border: none; border-radius: var(--radius-sm); font-family: var(--font-sans); font-size: 12px; letter-spacing: 0.1em; cursor: pointer; transition: opacity 0.2s; }
+.profile-save-btn:hover { opacity: 0.75; }
+.profile-saved-msg { font-size: 12px; color: var(--gold); display: none; }
+
+/* ═══ HISTORY ═══ */
+.history-item { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid var(--border); font-size: 14px; }
+.history-date { font-size: 11px; color: var(--ink-muted); min-width: 80px; font-family: var(--font-sans); }
+.history-card-name { font-family: var(--font-serif); font-size: 16px; color: var(--ink); }
+.history-emoji { font-size: 18px; }
+
+/* ═══ SPREAD ═══ */
+.spread-section { width: 100%; max-width: 600px; display: none; flex-direction: column; align-items: center; animation: fadeUp 0.5s ease both; }
+.spread-section.visible { display: flex; }
+.spread-picker { width: 100%; margin-bottom: 28px; position: relative; }
+.spread-dropdown-btn { width: 100%; padding: 14px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: border-color 0.2s; }
+.spread-dropdown-btn:hover, .spread-dropdown-btn.open { border-color: var(--gold); }
+.spread-dropdown-btn-text { display: flex; flex-direction: column; gap: 3px; }
+.spread-dropdown-title { font-family: var(--font-serif); font-size: 18px; color: var(--ink); line-height: 1.2; }
+.spread-dropdown-desc { font-size: 11px; color: var(--ink-muted); letter-spacing: 0.03em; }
+.spread-dropdown-arrow { font-size: 11px; color: var(--gold); flex-shrink: 0; transition: transform 0.25s; }
+.spread-dropdown-btn.open .spread-dropdown-arrow { transform: rotate(180deg); }
+.spread-dropdown-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; z-index: 50; box-shadow: 0 8px 32px rgba(0,0,0,0.09); }
+.spread-dropdown-menu.open { display: block; animation: fadeUp 0.2s ease both; }
+.spread-dropdown-item { width: 100%; padding: 14px 20px; background: none; border: none; border-bottom: 1px solid var(--border); cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 3px; transition: background 0.15s; }
+.spread-dropdown-item:last-child { border-bottom: none; }
+.spread-dropdown-item:hover { background: var(--bg); }
+.spread-dropdown-item.selected { background: var(--gold-light); }
+.spread-dropdown-item-title { font-family: var(--font-serif); font-size: 17px; color: var(--ink); }
+.spread-dropdown-item-desc { font-size: 11px; color: var(--ink-muted); }
+.spread-question-wrap { width: 100%; margin-bottom: 28px; animation: fadeUp 0.4s ease both; }
+.spread-hint { font-size: 13px; color: var(--ink-muted); font-style: italic; font-family: var(--font-serif); margin-top: 10px; line-height: 1.6; transition: opacity 0.3s; }
+.spread-hint strong { color: var(--gold); font-style: normal; font-weight: 400; }
+.spread-question-input { width: 100%; padding: 13px 16px; border: 1px solid var(--border); border-radius: 10px; font-family: var(--font-serif); font-size: 17px; background: var(--surface); color: var(--ink); outline: none; resize: none; line-height: 1.5; transition: border-color 0.2s; }
+.spread-question-input:focus { border-color: var(--gold); }
+.spread-question-input::placeholder { color: #c4bdb5; font-style: italic; }
+.spread-cards-row { display: flex; gap: 14px; justify-content: center; margin-bottom: 32px; width: 100%; }
+.spread-card-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1; max-width: 160px; }
+.spread-card-slot-label { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); text-align: center; }
+.spread-mini-card { width: 100%; aspect-ratio: 220 / 380; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.07); perspective: 600px; }
+.spread-mini-card.face-down { cursor: pointer; background: var(--surface); position: relative; overflow: hidden; }
+.spread-mini-card.face-down svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.1; }
+.spread-mini-card.face-down .mini-back-symbol { font-size: 28px; position: relative; z-index: 1; }
+.spread-mini-symbol { font-size: 36px; line-height: 1; }
+.spread-mini-name { font-family: var(--font-serif); font-size: 13px; text-align: center; line-height: 1.3; color: var(--ink); }
+.spread-mini-rev { font-size: 9px; color: var(--ink-muted); letter-spacing: 0.1em; }
+.spread-reading-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px 36px; width: 100%; }
+.spread-reading-card-block { margin-bottom: 22px; }
+.spread-reading-card-block:last-child { margin-bottom: 0; }
+.spread-reading-card-label { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+.spread-reading-card-name { font-family: var(--font-serif); font-size: 16px; color: var(--ink-muted); margin-bottom: 6px; font-style: italic; }
+.spread-reading-card-text { font-family: var(--font-serif); font-size: 17px; line-height: 1.75; color: var(--ink); }
+.spread-reading-summary { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); font-family: var(--font-serif); font-size: 17px; line-height: 1.75; color: var(--ink); font-style: italic; }
+.spread-reading-summary-label { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-muted); font-style: normal; display: block; margin-bottom: 8px; }
+
+/* ═══ TOAST NOTIFICATIONS ═══ */
+.toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+.toast { padding: 12px 24px; border-radius: var(--radius-sm); font-family: var(--font-sans); font-size: 13px; font-weight: 300; color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.15); animation: toastIn 0.3s ease both; pointer-events: auto; max-width: 360px; text-align: center; line-height: 1.5; }
+.toast.info { background: var(--toast-info); }
+.toast.error { background: var(--toast-error); }
+.toast.success { background: var(--toast-success); }
+.toast.hiding { animation: toastOut 0.3s ease both; }
+
+/* ═══ ANIMATIONS ═══ */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes cardReveal { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(12px); } }
+
+/* ═══ RESPONSIVE ═══ */
+@media (max-width: 480px) {
+  body { padding: 28px 16px 60px; }
+  :root { --card-w: 180px; --card-h: 310px; }
+  .reading-box { padding: 24px 20px; }
+  .spread-reading-box { padding: 24px 20px; }
+  .spread-cards-row { gap: 8px; }
+  .spread-mini-symbol { font-size: 28px; }
+  .spread-mini-name { font-size: 11px; }
+  .api-notice { padding: 16px; }
+  .api-key-row { flex-direction: column; }
+  .mode-tabs { width: 100%; }
+  .mode-tab { flex: 1; padding: 10px 16px; text-align: center; }
+  .draw-btn { padding: 12px 24px; }
+}
+@media (max-width: 360px) {
+  :root { --card-w: 160px; --card-h: 276px; }
+  .card-symbol-large { font-size: 56px; }
+  .card-name { font-size: 18px; }
+  .spread-card-slot-label { font-size: 8px; }
+}
+@media (min-width: 768px) {
+  .spread-cards-row { gap: 24px; }
+  .spread-card-wrap { max-width: 180px; }
+}
+</style>
+
+<!-- Firebase compat -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDCzIHNyNedzxGMN251rS4qzI7lMMWGDlA",
+  authDomain: "dea-tarot.firebaseapp.com",
+  projectId: "dea-tarot",
+  storageBucket: "dea-tarot.firebasestorage.app",
+  messagingSenderId: "51146409860",
+  appId: "1:51146409860:web:de9bfafcf1b3b4f671ffd1"
+};
+firebase.initializeApp(firebaseConfig);
+window.auth = firebase.auth();
+window.db   = firebase.firestore();
+const auth = window.auth;
+const db   = window.db;
+
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    window._uid = user.uid;
+    document.getElementById('drawerLoggedIn').style.display = 'block';
+    document.getElementById('drawerLoggedOut').style.display = 'none';
+    document.getElementById('drawerUserName').textContent = user.displayName || '';
+    document.getElementById('drawerUserEmail').textContent = user.email || '';
+    const nameField = document.getElementById('userName');
+    if (nameField && !nameField.value && user.displayName) nameField.value = user.displayName.split(' ')[0];
+    if (user.photoURL) {
+      document.getElementById('userAvatar').src = user.photoURL;
+      document.getElementById('userAvatar').style.display = 'block';
+      document.getElementById('drawerAvatar').src = user.photoURL;
+      document.getElementById('drawerAvatar').style.display = 'block';
+      const ph = document.querySelector('.profile-icon-placeholder');
+      if (ph) ph.style.display = 'none';
+    }
+    if (typeof App !== 'undefined' && App.init) App.init({ skipProfile: true });
+    try {
+      const snap = await window.db.collection('users').doc(user.uid).get();
+      if (snap.exists) {
+        Profile.applyToUI(snap.data());
+      } else {
+        // Firestore empty — push localStorage data to cloud (first login migration)
+        const local = Store.get(CONFIG.storageKeys.profile);
+        if (local) {
+          Profile.applyToUI(local);
+          const flat = Profile._toFlat(Profile.data);
+          window.db.collection('users').doc(user.uid).set(flat, { merge: true })
+            .catch(e => log('warn', 'Profile migration to Firestore failed:', e.message));
+        }
+        const localHistory = Store.get(CONFIG.storageKeys.history, []);
+        if (localHistory.length) {
+          const batch = window.db.batch();
+          localHistory.forEach(entry => {
+            const ref = window.db.collection('users').doc(user.uid).collection('history').doc();
+            batch.set(ref, entry);
+          });
+          batch.commit().catch(e => log('warn', 'History migration to Firestore failed:', e.message));
+        }
+      }
+    } catch(e) {
+      if (typeof log === 'function') log('error', 'Firestore profile read failed:', e.message, e.code);
+      if (typeof Notify !== 'undefined') Notify.show('Не удалось загрузить профиль из облака', 'error');
+      if (typeof Store !== 'undefined') {
+        const local = Store.get(CONFIG.storageKeys.profile);
+        if (local && typeof Profile !== 'undefined') Profile.applyToUI(local);
+      }
+    }
+    if (typeof History !== 'undefined') History.render();
+    if (typeof CardOfDay !== 'undefined') CardOfDay.restore();
+  } else {
+    window._uid = null;
+    document.getElementById('drawerLoggedIn').style.display = 'none';
+    document.getElementById('drawerLoggedOut').style.display = 'block';
+    if (typeof App !== 'undefined' && App.init) App.init();
+  }
+});
+
+window.signInWithGoogle = function() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(e => {
+    if (typeof Notify !== 'undefined') Notify.show('Не удалось войти: ' + e.message, 'error');
+  });
+};
+window.signOutUser = async function() { await auth.signOut(); };
+
+window.loadHistory = async function() {
+  if (!window._uid) return Store.get(CONFIG.storageKeys.history, []);
+  try {
+    const snap = await window.db.collection('users').doc(window._uid)
+      .collection('history').orderBy('ts', 'desc').limit(20).get();
+    return snap.docs.map(d => d.data());
+  } catch(e) {
+    log('error', 'Firestore history read failed:', e.message, e.code);
+    return Store.get(CONFIG.storageKeys.history, []);
+  }
+};
+</script>
+</head>
+<body>
+<div class="toast-container" id="toastContainer" data-testid="toast-container"></div>
+<div id="appWrap" style="width:100%; display:flex; flex-direction:column; align-items:center;">
+
+<button class="profile-icon-btn" id="profileIconBtn" data-action="open-drawer" aria-label="Открыть профиль" data-testid="profile-btn">
+  <img id="userAvatar" src="" alt=""><span class="profile-icon-placeholder">◎</span>
+</button>
+
+<div class="profile-drawer-overlay" id="drawerOverlay" data-action="close-drawer" aria-hidden="true"></div>
+
+<div class="profile-drawer" id="profileDrawer" role="dialog" aria-modal="true" aria-label="Профиль" data-testid="profile-drawer">
+  <div class="drawer-header">
+    <span class="drawer-title">Профиль</span>
+    <button class="drawer-close" data-action="close-drawer" aria-label="Закрыть профиль">✕</button>
+  </div>
+  <div id="drawerLoggedOut" style="display:block">
+    <div class="drawer-section" style="padding-top:24px;">
+      <div class="drawer-logged-out-text">Войди через Google — и твой профиль, натальные данные и история раскладов будут сохранены в облаке и доступны с любого устройства.</div>
+      <button class="drawer-google-btn" data-action="google-signin" data-testid="google-signin-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Войти через Google
+      </button>
+      <div class="drawer-benefits">
+        <div class="drawer-benefit">✦ Профиль и история сохраняются в облаке</div>
+        <div class="drawer-benefit">✦ Доступ с любого устройства</div>
+        <div class="drawer-benefit">✦ Предсказания персонализированы под тебя</div>
+      </div>
+    </div>
+  </div>
+  <div id="drawerLoggedIn" style="display:none">
+    <div class="drawer-user">
+      <img id="drawerAvatar" src="" alt="">
+      <div class="drawer-user-info"><span class="drawer-user-name" id="drawerUserName"></span><span class="drawer-user-email" id="drawerUserEmail"></span></div>
+      <button class="drawer-signout" data-action="sign-out">Выйти</button>
+    </div>
+    <div class="drawer-section" role="region" aria-label="О тебе">
+      <div class="drawer-section-title">О тебе</div>
+      <div class="profile-grid">
+        <div class="profile-field"><label class="profile-label" for="userName">Имя</label><input type="text" class="profile-input" id="userName" placeholder="например, Аня"></div>
+        <div class="profile-field"><label class="profile-label" for="userGender">Пол</label><select class="profile-input" id="userGender"><option value="">— не указан —</option><option value="female">Женский</option><option value="male">Мужской</option><option value="other">Другой</option></select></div>
+      </div>
+      <div class="drawer-section-title" style="margin-top:20px;">Натальные данные</div>
+      <div class="profile-subtitle">Дата, время и место рождения помогут ИИ учитывать твой знак зодиака при составлении предсказания.</div>
+      <div class="profile-grid">
+        <div class="profile-field"><label class="profile-label" for="birthDate">Дата рождения</label><input type="date" class="profile-input" id="birthDate" data-testid="birth-date-input"></div>
+        <div class="profile-field"><label class="profile-label" for="birthTime">Время рождения</label><input type="time" class="profile-input" id="birthTime"></div>
+        <div class="profile-field"><label class="profile-label" for="birthPlace">Место рождения</label><input type="text" class="profile-input" id="birthPlace" placeholder="например, Москва, Россия"></div>
+      </div>
+      <div class="profile-save-row">
+        <button class="profile-save-btn" data-action="save-profile" data-testid="save-profile-btn">Сохранить</button>
+        <span class="profile-saved-msg" id="profileSavedMsg">✓ Сохранено</span>
+      </div>
+    </div>
+    <div class="drawer-section" style="margin-top:32px; padding-bottom:40px;" role="region" aria-label="История">
+      <div class="drawer-section-title">История</div>
+      <div id="historyList" data-testid="history-list"></div>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="date-label" id="dateLabel"></div>
+  <h1>Dea</h1>
+  <div class="divider"></div>
+  <div id="natalBadge" class="natal-badge" style="display:none" data-action="open-drawer"><span class="nb-sign" id="natalSign"></span><span id="natalText"></span></div>
+</header>
+
+<div class="mode-tabs">
+  <button class="mode-tab active" id="tabDay" data-action="mode-day">Карта дня</button>
+  <button class="mode-tab" id="tabSpread" data-action="mode-spread">Расклад</button>
+</div>
+
+<div class="card-area" id="cardArea" data-testid="card-area">
+  <div class="card-inner" id="cardInner">
+    <div class="card-face card-back" id="cardBack" data-action="draw-card" role="button" aria-label="Вытянуть карту дня" tabindex="0">
+      <div class="card-back-pattern">
+        <svg viewBox="0 0 220 380" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="200" height="360" rx="8" fill="none" stroke="#b8996a" stroke-width="1"/><rect x="20" y="20" width="180" height="340" rx="6" fill="none" stroke="#b8996a" stroke-width="0.5"/><line x1="10" y1="10" x2="210" y2="370" stroke="#b8996a" stroke-width="0.5"/><line x1="210" y1="10" x2="10" y2="370" stroke="#b8996a" stroke-width="0.5"/><circle cx="110" cy="190" r="60" fill="none" stroke="#b8996a" stroke-width="0.5"/><circle cx="110" cy="190" r="40" fill="none" stroke="#b8996a" stroke-width="0.5"/><circle cx="110" cy="190" r="20" fill="none" stroke="#b8996a" stroke-width="0.5"/><polygon points="110,30 120,45 110,60 100,45" fill="none" stroke="#b8996a" stroke-width="0.5"/><polygon points="110,320 120,335 110,350 100,335" fill="none" stroke="#b8996a" stroke-width="0.5"/><polygon points="35,185 50,190 35,195 20,190" fill="none" stroke="#b8996a" stroke-width="0.5"/><polygon points="185,185 200,190 185,195 170,190" fill="none" stroke="#b8996a" stroke-width="0.5"/></svg>
+        <div class="card-back-symbol">✦</div>
+      </div>
+    </div>
+    <div class="card-face card-front" id="cardFront">
+      <div class="card-arcana-badge" id="arcanaLabel"></div>
+      <div class="card-symbol-large" id="cardSymbol"></div>
+      <div class="card-name" id="cardName"></div>
+      <div class="card-keywords" id="cardKeywords"></div>
+    </div>
+  </div>
+</div>
+
+<button class="draw-btn" id="drawBtn" data-action="draw-card" data-testid="draw-card-btn"><span>✦</span><span>Вытянуть карту</span></button>
+
+<div class="reading-area" id="readingArea" style="display:none" data-testid="reading-area">
+  <div class="reading-box"><div class="reading-title">Послание дня</div><div class="reading-text" id="readingText"></div></div>
+</div>
+
+<div class="api-notice" id="apiNotice">
+  <strong>🔑 Ключ Claude API</strong><br>
+  Чтобы предсказания генерировались через ИИ, нужен API-ключ. Получи его бесплатно на <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> и вставь сюда. Ключ сохраняется только в твоём браузере.
+  <div class="api-key-row"><input type="password" class="api-key-input" id="apiKeyInput" placeholder="sk-ant-..." data-testid="api-key-input"><button class="api-key-btn" data-action="save-key">Сохранить</button></div>
+  <span class="api-key-saved" id="keySavedMsg" style="display:none">✓ Ключ сохранён</span>
+  <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+    <span style="font-size:11px; color:var(--ink-muted);">Сбросить карту дня (для теста):</span>
+    <button data-action="reset-today" style="background:none; border:1px solid var(--border); border-radius:6px; padding:5px 12px; font-family:var(--font-sans); font-size:11px; color:var(--ink-muted); cursor:pointer;">↺ Сбросить</button>
+    <span id="resetMsg" style="display:none; font-size:11px; color:var(--gold);">✓ Готово — вытягивай заново</span>
+  </div>
+</div>
+
+<div class="spread-section" id="spreadSection">
+  <div class="spread-picker" id="spreadPicker">
+    <button class="spread-dropdown-btn" id="spreadDropdownBtn" data-action="toggle-spread-dropdown" role="listbox" aria-label="Выбрать тип расклада">
+      <div class="spread-dropdown-btn-text"><span class="spread-dropdown-title" id="spreadDropdownTitle">Прошлое · Настоящее · Будущее</span><span class="spread-dropdown-desc" id="spreadDropdownDesc">Для вопросов с временно́й динамикой и развитием ситуации</span></div>
+      <span class="spread-dropdown-arrow">▼</span>
+    </button>
+    <div class="spread-dropdown-menu" id="spreadDropdownMenu">
+      <button class="spread-dropdown-item selected" id="spreadOpt_past" data-action="select-spread" data-spread="past" role="option" aria-selected="true"><span class="spread-dropdown-item-title">Прошлое · Настоящее · Будущее</span><span class="spread-dropdown-item-desc">Для вопросов с временно́й динамикой и развитием ситуации</span></button>
+      <button class="spread-dropdown-item" id="spreadOpt_situation" data-action="select-spread" data-spread="situation" role="option" aria-selected="false"><span class="spread-dropdown-item-title">Ситуация · Совет · Исход</span><span class="spread-dropdown-item-desc">Для конкретного вопроса, требующего решения или выбора</span></button>
+      <button class="spread-dropdown-item" id="spreadOpt_mind" data-action="select-spread" data-spread="mind" role="option" aria-selected="false"><span class="spread-dropdown-item-title">Разум · Тело · Дух</span><span class="spread-dropdown-item-desc">Для самопознания и понимания своего внутреннего состояния</span></button>
+    </div>
+  </div>
+  <div class="spread-question-wrap" id="spreadQuestionWrap"><textarea class="spread-question-input" id="spreadQuestion" rows="2" placeholder="Напиши свой вопрос или тему..." aria-label="Вопрос для расклада"></textarea><div class="spread-hint" id="spreadHint"></div></div>
+  <button class="draw-btn" id="spreadDrawBtn" data-action="draw-spread" style="margin-bottom:36px;" data-testid="spread-draw-btn"><span>✦</span><span>Разложить карты</span></button>
+  <div class="spread-cards-row" id="spreadCardsRow" style="display:none" data-testid="spread-cards-row">
+    <div class="spread-card-wrap"><div class="spread-card-slot-label" id="slotLabel0"></div><div class="spread-mini-card face-down" id="spreadCard0"><svg viewBox="0 0 220 380" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="200" height="360" rx="8" fill="none" stroke="#b8996a" stroke-width="1.5"/><line x1="10" y1="10" x2="210" y2="370" stroke="#b8996a" stroke-width="0.5"/><line x1="210" y1="10" x2="10" y2="370" stroke="#b8996a" stroke-width="0.5"/><circle cx="110" cy="190" r="50" fill="none" stroke="#b8996a" stroke-width="0.5"/></svg><span class="mini-back-symbol">✦</span></div></div>
+    <div class="spread-card-wrap"><div class="spread-card-slot-label" id="slotLabel1"></div><div class="spread-mini-card face-down" id="spreadCard1"><svg viewBox="0 0 220 380" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="200" height="360" rx="8" fill="none" stroke="#b8996a" stroke-width="1.5"/><line x1="10" y1="10" x2="210" y2="370" stroke="#b8996a" stroke-width="0.5"/><line x1="210" y1="10" x2="10" y2="370" stroke="#b8996a" stroke-width="0.5"/><circle cx="110" cy="190" r="50" fill="none" stroke="#b8996a" stroke-width="0.5"/></svg><span class="mini-back-symbol">✦</span></div></div>
+    <div class="spread-card-wrap"><div class="spread-card-slot-label" id="slotLabel2"></div><div class="spread-mini-card face-down" id="spreadCard2"><svg viewBox="0 0 220 380" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="200" height="360" rx="8" fill="none" stroke="#b8996a" stroke-width="1.5"/><line x1="10" y1="10" x2="210" y2="370" stroke="#b8996a" stroke-width="0.5"/><line x1="210" y1="10" x2="10" y2="370" stroke="#b8996a" stroke-width="0.5"/><circle cx="110" cy="190" r="50" fill="none" stroke="#b8996a" stroke-width="0.5"/></svg><span class="mini-back-symbol">✦</span></div></div>
+  </div>
+  <div class="spread-reading-box" id="spreadReadingBox" style="display:none"><div id="spreadReadingContent"></div></div>
+</div>
+
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════════════════════
+const CONFIG = {
+  maxHistoryItems: 20,
+  reversedProbability: 0.3,
+  typewriterDelay: 30,
+  cardFlipDelay: 1200,
+  spreadRevealDelay: 300,
+  spreadRevealStep: 250,
+  apiModel: 'claude-sonnet-4-6',
+  apiMaxTokensDay: 300,
+  apiMaxTokensSpread: 1200,
+  apiTimeout: 25000,
+  debug: true,
+  storageKeys: {
+    apiKey: 'tarot_api_key',
+    profile: 'tarot_profile',
+    history: 'tarot_history',
+    dayPrefix: 'tarot_day_',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════════
+function log(level, ...args) { if (CONFIG.debug || level === 'error') console[level]('[Dea]', ...args); }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STORE — localStorage abstraction
+// ═══════════════════════════════════════════════════════════════════════════════
+const Store = {
+  get(key, fallback = null) {
+    try { const raw = localStorage.getItem(key); if (raw === null) return fallback; return JSON.parse(raw); }
+    catch(e) { return fallback; }
+  },
+  set(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); }
+    catch(e) { log('warn', 'Store.set failed:', e.message); }
+  },
+  remove(key) { try { localStorage.removeItem(key); } catch(e) {} },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NOTIFY — toast notifications
+// ═══════════════════════════════════════════════════════════════════════════════
+const Notify = {
+  _el: null,
+  init() { this._el = document.getElementById('toastContainer'); },
+  show(message, type = 'info', duration = 4000) {
+    if (!this._el) this.init();
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.textContent = message;
+    this._el.appendChild(toast);
+    setTimeout(() => { toast.classList.add('hiding'); setTimeout(() => toast.remove(), 300); }, duration);
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VALIDATE
+// ═══════════════════════════════════════════════════════════════════════════════
+const Validate = {
+  date(str) {
+    if (!str) return { valid: true };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return { valid: false, error: 'Неверный формат даты' };
+    const y = new Date(str).getFullYear(), now = new Date().getFullYear();
+    if (y < 1920 || y > now) return { valid: false, error: 'Дата вне диапазона (1920–' + now + ')' };
+    return { valid: true };
+  },
+  time(str) { if (!str) return { valid: true }; return { valid: /^\d{2}:\d{2}$/.test(str), error: 'Формат: ЧЧ:ММ' }; },
+  name(str) {
+    if (!str) return { valid: true };
+    const clean = str.replace(/<[^>]*>/g, '').trim();
+    if (clean.length > 50) return { valid: false, error: 'Максимум 50 символов' };
+    return { valid: true, clean };
+  },
+  apiKey(str) {
+    if (!str) return { valid: false, error: 'Введи ключ' };
+    if (!str.startsWith('sk-ant-') || str.length < 20) return { valid: false, error: 'Ключ должен начинаться с sk-ant-' };
+    return { valid: true };
+  },
+  question(str) {
+    if (!str) return { valid: true, clean: '' };
+    return { valid: true, clean: str.replace(/<[^>]*>/g, '').trim().slice(0, 500) };
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DOM CACHE
+// ═══════════════════════════════════════════════════════════════════════════════
+const DOM = {};
+function cacheDOM() {
+  ['drawBtn','cardInner','cardBack','readingArea','readingText','dateLabel','cardArea',
+   'arcanaLabel','cardSymbol','cardName','cardKeywords','apiKeyInput','keySavedMsg','resetMsg',
+   'tabDay','tabSpread','spreadSection','spreadDropdownBtn','spreadDropdownMenu',
+   'spreadDropdownTitle','spreadDropdownDesc','spreadHint','spreadQuestion','spreadDrawBtn',
+   'spreadCardsRow','spreadReadingBox','spreadReadingContent','profileDrawer','drawerOverlay',
+   'natalBadge','natalSign','natalText','birthDate','birthTime','birthPlace','userName',
+   'userGender','profileSavedMsg','historyList','spreadPicker'
+  ].forEach(id => { DOM[id] = document.getElementById(id); });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EVENTS — simple event bus
+// ═══════════════════════════════════════════════════════════════════════════════
+const Events = {
+  _handlers: {},
+  on(event, fn) { (this._handlers[event] ||= []).push(fn); },
+  emit(event, data) { (this._handlers[event] || []).forEach(fn => fn(data)); },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════════════════════
+const MAJOR_ARCANA = [
+  { num: "0",    name: "Шут",              symbol: "🌀", keywords: "начало · свобода · риск" },
+  { num: "I",    name: "Маг",              symbol: "⚡", keywords: "воля · мастерство · действие" },
+  { num: "II",   name: "Верховная Жрица",  symbol: "🌙", keywords: "интуиция · тайна · знание" },
+  { num: "III",  name: "Императрица",      symbol: "🌿", keywords: "плодородие · красота · природа" },
+  { num: "IV",   name: "Император",        symbol: "🏛️", keywords: "власть · структура · стабильность" },
+  { num: "V",    name: "Иерофант",         symbol: "🔑", keywords: "традиция · учение · духовность" },
+  { num: "VI",   name: "Влюблённые",       symbol: "💫", keywords: "выбор · союз · гармония" },
+  { num: "VII",  name: "Колесница",        symbol: "🌠", keywords: "победа · контроль · движение" },
+  { num: "VIII", name: "Сила",             symbol: "🦁", keywords: "терпение · смелость · внутренняя сила" },
+  { num: "IX",   name: "Отшельник",        symbol: "🕯️", keywords: "одиночество · мудрость · поиск" },
+  { num: "X",    name: "Колесо Фортуны",   symbol: "☸️", keywords: "цикл · судьба · перемены" },
+  { num: "XI",   name: "Справедливость",   symbol: "⚖️", keywords: "баланс · истина · карма" },
+  { num: "XII",  name: "Повешенный",       symbol: "🔄", keywords: "пауза · жертва · перспектива" },
+  { num: "XIII", name: "Смерть",           symbol: "🌑", keywords: "трансформация · конец · обновление" },
+  { num: "XIV",  name: "Умеренность",      symbol: "🌊", keywords: "равновесие · терпение · цель" },
+  { num: "XV",   name: "Дьявол",           symbol: "⛓️", keywords: "привязанность · материальность · тень" },
+  { num: "XVI",  name: "Башня",            symbol: "⚡", keywords: "потрясение · откровение · хаос" },
+  { num: "XVII", name: "Звезда",           symbol: "⭐", keywords: "надежда · вдохновение · исцеление" },
+  { num: "XVIII",name: "Луна",             symbol: "🌕", keywords: "иллюзия · страх · подсознание" },
+  { num: "XIX",  name: "Солнце",           symbol: "☀️", keywords: "радость · успех · витальность" },
+  { num: "XX",   name: "Суд",              symbol: "🎺", keywords: "пробуждение · искупление · призыв" },
+  { num: "XXI",  name: "Мир",              symbol: "🌍", keywords: "завершение · единство · триумф" },
+];
+
+const DECK = {
+  major: MAJOR_ARCANA,
+  getAll() { return [...this.major]; },
+  getRandom(n = 1) { return this.getAll().sort(() => Math.random() - 0.5).slice(0, n); },
+};
+
+const ZODIAC = [
+  { sign: 'Козерог', symbol: '♑', start: [12,22], end: [1,19] },
+  { sign: 'Водолей', symbol: '♒', start: [1,20], end: [2,18] },
+  { sign: 'Рыбы', symbol: '♓', start: [2,19], end: [3,20] },
+  { sign: 'Овен', symbol: '♈', start: [3,21], end: [4,19] },
+  { sign: 'Телец', symbol: '♉', start: [4,20], end: [5,20] },
+  { sign: 'Близнецы', symbol: '♊', start: [5,21], end: [6,20] },
+  { sign: 'Рак', symbol: '♋', start: [6,21], end: [7,22] },
+  { sign: 'Лев', symbol: '♌', start: [7,23], end: [8,22] },
+  { sign: 'Дева', symbol: '♍', start: [8,23], end: [9,22] },
+  { sign: 'Весы', symbol: '♎', start: [9,23], end: [10,22] },
+  { sign: 'Скорпион', symbol: '♏', start: [10,23], end: [11,21] },
+  { sign: 'Стрелец', symbol: '♐', start: [11,22], end: [12,21] },
+  { sign: 'Козерог', symbol: '♑', start: [12,22], end: [12,31] },
+];
+
+const SPREADS = {
+  past: { label: 'Прошлое · Настоящее · Будущее', desc: 'Для вопросов с временно́й динамикой и развитием ситуации', slots: ['Прошлое','Настоящее','Будущее'], hint: '<strong>Подходящие вопросы:</strong> «Что привело меня к нынешней ситуации?», «Как развиваются мои отношения / карьера / здоровье?», «Куда движется эта история?»', placeholder: 'например: Как развивается моя карьера?', slotMeaning: ['корни ситуации — что из прошлого опыта, решений или обстоятельств привело к нынешнему моменту','текущая реальность — что происходит прямо сейчас, какие силы действуют в данный момент','вектор развития — куда движется ситуация, если всё останется как есть'], interplay: 'Покажи как прошлое породило настоящее, и как настоящее формирует будущее — это должна быть единая нить.' },
+  situation: { label: 'Ситуация · Совет · Исход', desc: 'Для конкретного вопроса, требующего решения или выбора', slots: ['Ситуация','Совет','Исход'], hint: '<strong>Подходящие вопросы:</strong> «Стоит ли мне менять работу?», «Как поступить с этим конфликтом?», «Принять ли это предложение?»', placeholder: 'например: Стоит ли мне переехать в другой город?', slotMeaning: ['суть происходящего — что на самом деле стоит за вопросом, скрытые факторы и динамика ситуации','конкретное действие или подход — что именно стоит сделать, изменить в себе или в поведении','наиболее вероятный результат — что произойдёт если последовать совету'], interplay: 'Покажи логическую связь: почему именно этот совет подходит к этой ситуации, и как он приведёт к этому исходу.' },
+  mind: { label: 'Разум · Тело · Дух', desc: 'Для самопознания и понимания своего внутреннего состояния', slots: ['Разум','Тело','Дух'], hint: '<strong>Подходящие вопросы:</strong> «Как я себя чувствую прямо сейчас?», «Что происходит на трёх уровнях моей жизни?», «Где мне нужно уделить больше внимания?»', placeholder: 'например: Что мне нужно сейчас для гармонии?', slotMeaning: ['ментальный план — мысли, убеждения, страхи или ожидания которые сейчас доминируют','физический и эмоциональный план — как состояние проявляется в теле, энергии и чувствах','глубинный уровень — что происходит с ценностями, смыслами и внутренним компасом'], interplay: 'Покажи где эти три уровня согласованы, а где между ними есть напряжение — и что это говорит о человеке.' },
+};
+
+const DEMO_READINGS = {
+  "Шут": "Сегодня вселенная приглашает тебя сделать шаг в неизвестность с лёгким сердцем. Не просчитывай каждый ход — позволь себе удивиться. Иногда лучшие истории начинаются там, где кончаются карты.",
+  "Маг": "Сегодня все нужные инструменты уже у тебя в руках. Не жди подходящего момента — ты сам создаёшь его прямо сейчас. Действуй с намерением, и задуманное воплотится.",
+  "Верховная Жрица": "День просит тебя остановиться и прислушаться. Ответ, который ты ищешь, живёт не в чужих словах, а в твоём тихом внутреннем знании. Доверяй интуиции.",
+  "Императрица": "Сегодня благоприятный день для всего, что связано с созданием и заботой. Позволь себе насладиться красотой вокруг. Плоды твоих усилий уже начинают созревать.",
+  "Мир": "Ты стоишь на пороге завершения важного цикла. Оглянись и оцени, как далеко ты прошёл. Сегодня есть смысл отмечать даже маленькие победы.",
+  "Солнце": "День наполнен светлой энергией и чистой радостью. Делай то, что тебе по-настоящему нравится — сегодня это приносит особые плоды. Улыбнись и позволь себе блистать.",
+  "Луна": "Сегодня что-то может казаться туманным или двойственным. Не торопись с выводами — позволь ситуации проясниться. Ночные страхи растворяются с рассветом.",
+  "Звезда": "После трудного периода появляется свет надежды. Сегодня самое время вернуть веру в себя и в доброту мира. Твоя мечта не забыла о тебе.",
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROFILE
+// ═══════════════════════════════════════════════════════════════════════════════
+const DEFAULT_PROFILE = { name: '', gender: '', birth: { date: '', time: '', place: '' } };
+
+function migrateProfile(old) {
+  if (!old) return { ...DEFAULT_PROFILE };
+  if (old.birth) return old;
+  return { ...DEFAULT_PROFILE, name: old.name || '', gender: old.gender || '', birth: { date: old.date || '', time: old.time || '', place: old.place || '' } };
+}
+
+function getZodiac(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr), m = d.getMonth() + 1, day = d.getDate();
+  for (const z of ZODIAC) { const [sm,sd]=z.start,[em,ed]=z.end; if ((m===sm&&day>=sd)||(m===em&&day<=ed)) return z; }
+  return null;
+}
+
+const Profile = {
+  _data: null,
+  get data() { if (!this._data) { this._data = migrateProfile(Store.get(CONFIG.storageKeys.profile)); } return this._data; },
+  _toFlat(d) { return { name: d.name||'', gender: d.gender||'', date: d.birth?.date||'', time: d.birth?.time||'', place: d.birth?.place||'' }; },
+  _fromFlat(f) { return migrateProfile(f); },
+
+  applyToUI(data) {
+    this._data = this._fromFlat(data);
+    Store.set(CONFIG.storageKeys.profile, this._data);
+    const flat = this._toFlat(this._data);
+    if (flat.date) DOM.birthDate.value = flat.date;
+    if (flat.time) DOM.birthTime.value = flat.time;
+    if (flat.place) DOM.birthPlace.value = flat.place;
+    if (this._data.name) DOM.userName.value = this._data.name;
+    if (this._data.gender) DOM.userGender.value = this._data.gender;
+    this.updateBadge();
+  },
+
+  save() {
+    const nc = Validate.name(DOM.userName.value), dc = Validate.date(DOM.birthDate.value), tc = Validate.time(DOM.birthTime.value);
+    DOM.userName.classList.toggle('invalid', !nc.valid);
+    DOM.birthDate.classList.toggle('invalid', !dc.valid);
+    DOM.birthTime.classList.toggle('invalid', !tc.valid);
+    if (!nc.valid) { Notify.show(nc.error, 'error'); return; }
+    if (!dc.valid) { Notify.show(dc.error, 'error'); return; }
+    if (!tc.valid) { Notify.show(tc.error, 'error'); return; }
+
+    const data = { name: (nc.clean !== undefined ? nc.clean : DOM.userName.value||'').trim(), gender: DOM.userGender.value||'', birth: { date: DOM.birthDate.value||'', time: DOM.birthTime.value||'', place: (DOM.birthPlace.value||'').trim() } };
+    this._data = data;
+    Store.set(CONFIG.storageKeys.profile, data);
+    const uid = window._uid || (auth.currentUser && auth.currentUser.uid);
+    if (uid) {
+      window.db.collection('users').doc(uid).set(this._toFlat(data), { merge: true })
+        .then(() => log('info', 'Firestore save OK'))
+        .catch(e => { log('warn', 'Firestore save error:', e.message); Notify.show('Сохранено локально — нет связи с облаком', 'info'); });
+    }
+    DOM.profileSavedMsg.style.display = 'inline-block';
+    setTimeout(() => { DOM.profileSavedMsg.style.display = 'none'; }, 3000);
+    this.updateBadge();
+    Events.emit('profile:saved', data);
+  },
+
+  updateBadge() {
+    const dateStr = this.data.birth?.date || '';
+    if (!dateStr) return;
+    const z = getZodiac(dateStr);
+    if (!z) return;
+    DOM.natalSign.textContent = z.symbol;
+    DOM.natalText.textContent = z.sign + (this.data.birth?.place ? ' · ' + this.data.birth.place : '');
+    DOM.natalBadge.style.display = 'inline-flex';
+  },
+
+  buildContext() {
+    const d = this.data;
+    if (!d) return '';
+    const parts = [];
+    if (d.name) parts.push('имя — ' + d.name);
+    if (d.gender) { const gmap = { female: 'женский', male: 'мужской', other: 'другой' }; parts.push('пол — ' + (gmap[d.gender]||d.gender)); }
+    if (d.birth?.date) { const z = getZodiac(d.birth.date); const age = new Date().getFullYear() - new Date(d.birth.date).getFullYear(); if (z) parts.push('знак зодиака — ' + z.sign); parts.push('примерный возраст — ' + age + ' лет'); }
+    if (d.birth?.time) parts.push('время рождения — ' + d.birth.time);
+    if (d.birth?.place) parts.push('место рождения — ' + d.birth.place);
+    if (!parts.length) return '';
+    const nameStr = d.name ? ' Обращайся к пользователю по имени — ' + d.name + '.' : '';
+    const genderStr = d.gender === 'female' ? ' Используй женский род в обращении.' : d.gender === 'male' ? ' Используй мужской род в обращении.' : '';
+    return '\n\nКонтекст пользователя: ' + parts.join(', ') + '.' + nameStr + genderStr + ' Тонко учти эти данные — не перечисляй их дословно.';
+  },
+
+  open() { DOM.profileDrawer.classList.add('open'); DOM.drawerOverlay.classList.add('open'); document.body.style.overflow = 'hidden'; const f = DOM.profileDrawer.querySelector('button, input, select, textarea'); if (f) f.focus(); },
+  close() { DOM.profileDrawer.classList.remove('open'); DOM.drawerOverlay.classList.remove('open'); document.body.style.overflow = ''; document.getElementById('profileIconBtn').focus(); },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// API
+// ═══════════════════════════════════════════════════════════════════════════════
+const API = {
+  mode: 'direct', // 'direct' | 'proxy'
+  proxyUrl: '',   // TODO: backend-proxy
+
+  async call({ prompt, maxTokens = CONFIG.apiMaxTokensDay }) {
+    if (this.mode === 'proxy' && this.proxyUrl) return this._callProxy(prompt, maxTokens);
+    return this._callDirect(prompt, maxTokens);
+  },
+
+  async _callDirect(prompt, maxTokens) {
+    const key = Store.get(CONFIG.storageKeys.apiKey, ''); // TODO: backend-proxy
+    if (!key) return null;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), CONFIG.apiTimeout);
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: CONFIG.apiModel, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const data = await res.json();
+      return data?.content?.[0]?.text || null;
+    } catch(e) {
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') Notify.show('Запрос слишком долгий — используем встроенное предсказание', 'info');
+      else log('warn', 'API error:', e.message);
+      return null;
+    }
+  },
+
+  async _callProxy(prompt, maxTokens) { log('warn', 'Proxy mode not configured'); return null; },
+
+  buildDayPrompt(card, isReversed) {
+    return 'Ты — мудрый таролог. Сделай короткое ежедневное предсказание (3-4 предложения) для карты "' + card.name + '"' + (isReversed ? ' в перевёрнутом положении' : '') + '. Ключевые слова карты: ' + card.keywords + '. Говори тепло, образно, конкретно — дай совет на сегодняшний день. Не упоминай само слово "таро", не нумеруй.' + Profile.buildContext();
+  },
+
+  buildSpreadPrompt(drawnCards, spread, question) {
+    const cardLines = drawnCards.map(({card,isReversed},i) => spread.slots[i]+': «'+card.name+'»'+(isReversed?' (перевёрнутая)':'')+' — '+card.keywords).join('\n');
+    const questionLine = question ? 'Вопрос пользователя: «'+question+'»' : 'Вопрос не задан — дай общее предсказание.';
+    const slotDesc = spread.slotMeaning.map((m,i) => '- '+spread.slots[i]+': '+m).join('\n');
+    return 'Ты — глубокий, проницательный таролог. Твоя задача — не просто описать карты, а дать живую, конкретную расшифровку которая поможет человеку увидеть свою ситуацию по-новому.'+Profile.buildContext()+'\n\nРасклад: «'+spread.label+'»\n'+questionLine+'\n\nСмысл позиций в этом раскладе:\n'+slotDesc+'\n\nКарты:\n'+cardLines+'\n\nИнструкция:\n1. Для каждой позиции напиши 3-4 предложения. Не описывай карту абстрактно — привяжи её символизм к конкретной позиции и к вопросу человека. Используй образный, но понятный язык.\n2. Общий вывод (3-4 предложения): '+spread.interplay+' Заверши конкретным, вдохновляющим посылом.\n3. Если указано имя — обращайся по имени естественно, не в каждом предложении.\n4. Отвечай строго в JSON без лишнего текста:\n{\n  "cards": [\n    {"slot": "'+spread.slots[0]+'", "text": "..."},\n    {"slot": "'+spread.slots[1]+'", "text": "..."},\n    {"slot": "'+spread.slots[2]+'", "text": "..."}\n  ],\n  "summary": "..."\n}';
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UI
+// ═══════════════════════════════════════════════════════════════════════════════
+const UI = {
+  switchMode(mode) {
+    ['cardArea','drawBtn','readingArea'].forEach(id => { if (DOM[id]) DOM[id].style.display = mode === 'day' ? '' : 'none'; });
+    DOM.tabDay.classList.toggle('active', mode === 'day');
+    DOM.tabSpread.classList.toggle('active', mode === 'spread');
+    DOM.spreadSection.classList.toggle('visible', mode === 'spread');
+    if (mode === 'spread') Spread.updateHint();
+  },
+  async typeText(el, text) { el.innerHTML = ''; const w = text.split(' '); for (let i=0;i<w.length;i++) { el.innerHTML += (i>0?' ':'')+w[i]; if (i%4===0) await sleep(CONFIG.typewriterDelay); } },
+  startCountdown() {
+    function tick() {
+      if (!Store.get(CardOfDay.todayKey())) return;
+      const now = new Date(), mid = new Date(now); mid.setHours(24,0,0,0);
+      const diff = mid - now;
+      const h = String(Math.floor(diff/3600000)).padStart(2,'0'), m = String(Math.floor((diff%3600000)/60000)).padStart(2,'0'), s = String(Math.floor((diff%60000)/1000)).padStart(2,'0');
+      if (DOM.drawBtn.disabled) DOM.drawBtn.innerHTML = '<span>🌙</span><span>Следующая карта через '+h+':'+m+':'+s+'</span>';
+    }
+    tick(); setInterval(tick, 1000);
+  },
+  saveApiKey() {
+    const val = DOM.apiKeyInput.value.trim();
+    const check = Validate.apiKey(val);
+    if (!check.valid) { Notify.show(check.error, 'error'); return; }
+    Store.set(CONFIG.storageKeys.apiKey, val);
+    DOM.keySavedMsg.style.display = 'inline-block';
+    Notify.show('Ключ сохранён', 'success');
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════════════════════════════
+const History = {
+  save(entry) {
+    if (window._uid) window.db.collection('users').doc(window._uid).collection('history').add(entry).catch(e => log('warn', 'History save error:', e.message));
+    const h = Store.get(CONFIG.storageKeys.history, []);
+    h.unshift(entry);
+    Store.set(CONFIG.storageKeys.history, h.slice(0, CONFIG.maxHistoryItems));
+  },
+  async render() {
+    let h = [];
+    if (window.loadHistory) { try { h = await window.loadHistory(); } catch(e) {} }
+    if (!h.length) h = Store.get(CONFIG.storageKeys.history, []);
+    if (!h.length || !DOM.historyList) return;
+    DOM.historyList.innerHTML = h.map(i => '<div class="history-item"><span class="history-emoji">'+(i.symbol||'🃏')+'</span><span class="history-card-name">'+i.name+'</span><span class="history-date" style="margin-left:auto">'+i.date+'</span></div>').join('');
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CARD OF DAY
+// ═══════════════════════════════════════════════════════════════════════════════
+const CardOfDay = {
+  _isDrawing: false,
+  localDateStr() { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
+  todayKey() { return CONFIG.storageKeys.dayPrefix + this.localDateStr(); },
+
+  async restore() {
+    let saved = Store.get(this.todayKey());
+    if (!saved && window._uid) {
+      try { const snap = await window.db.collection('users').doc(window._uid).collection('daily').doc(this.localDateStr()).get(); if (snap.exists) { saved = snap.data(); Store.set(this.todayKey(), saved); } } catch(e) {}
+    }
+    if (!saved) return false;
+    const card = MAJOR_ARCANA.find(c => c.name === saved.cardName);
+    if (!card) return false;
+    DOM.arcanaLabel.textContent = 'Старший аркан · ' + card.num;
+    DOM.cardSymbol.textContent = card.symbol;
+    DOM.cardName.textContent = card.name + (saved.isReversed ? ' (перевёрнутая)' : '');
+    DOM.cardKeywords.textContent = card.keywords;
+    DOM.cardInner.style.transition = 'none'; DOM.cardInner.classList.add('flipped');
+    requestAnimationFrame(() => { DOM.cardInner.style.transition = ''; });
+    DOM.readingArea.style.display = 'block';
+    DOM.readingText.className = 'reading-text'; DOM.readingText.textContent = saved.reading;
+    this.setDrawnState();
+    return true;
+  },
+
+  setDrawnState() { DOM.drawBtn.disabled = true; DOM.drawBtn.innerHTML = '<span>🌙</span><span>Новая карта — завтра</span>'; DOM.drawBtn.style.opacity = '0.45'; DOM.drawBtn.style.cursor = 'default'; },
+
+  async draw() {
+    if (this._isDrawing || Store.get(this.todayKey())) return;
+    this._isDrawing = true; DOM.drawBtn.disabled = true;
+    const card = DECK.getRandom(1)[0];
+    const isReversed = Math.random() < CONFIG.reversedProbability;
+    DOM.arcanaLabel.textContent = 'Старший аркан · ' + card.num;
+    DOM.cardSymbol.textContent = card.symbol;
+    DOM.cardName.textContent = card.name + (isReversed ? ' (перевёрнутая)' : '');
+    DOM.cardKeywords.textContent = card.keywords;
+    DOM.cardInner.classList.add('flipped');
+    DOM.readingArea.style.display = 'block';
+    DOM.readingText.className = 'reading-text loading';
+    DOM.readingText.innerHTML = 'Читаю послание карты<span class="cursor"></span>';
+
+    setTimeout(async () => {
+      const prompt = API.buildDayPrompt(card, isReversed);
+      let text = await API.call({ prompt, maxTokens: CONFIG.apiMaxTokensDay });
+      if (text) { DOM.readingText.className = 'reading-text'; await UI.typeText(DOM.readingText, text); }
+      else { text = DEMO_READINGS[card.name] || 'Карта «'+card.name+'» несёт в себе энергию: '+card.keywords+'. Сегодня обрати внимание на то, где эти качества проявляются в твоей жизни. Используй их как компас.'; if (isReversed) text += ' Сегодня эта энергия обращена внутрь — самое время для честного внутреннего диалога.'; DOM.readingText.className = 'reading-text'; DOM.readingText.textContent = text; }
+      this._isDrawing = false;
+      const todayData = { cardName: card.name, isReversed, reading: text };
+      Store.set(this.todayKey(), todayData);
+      if (window._uid) window.db.collection('users').doc(window._uid).collection('daily').doc(this.localDateStr()).set(todayData).catch(e => log('warn', 'Daily card save error:', e.message));
+      this.setDrawnState();
+      History.save({ type: 'day', date: new Date().toLocaleDateString('ru-RU', { day:'numeric', month:'short' }), name: card.name + (isReversed ? ' ↩' : ''), symbol: card.symbol, ts: Date.now() });
+      History.render();
+      Events.emit('card:drawn', { card, isReversed });
+    }, CONFIG.cardFlipDelay);
+  },
+
+  reset() {
+    Store.remove(this.todayKey());
+    DOM.cardInner.style.transition = 'none'; DOM.cardInner.classList.remove('flipped');
+    requestAnimationFrame(() => { DOM.cardInner.style.transition = ''; });
+    DOM.readingArea.style.display = 'none';
+    DOM.drawBtn.disabled = false; DOM.drawBtn.style.opacity = ''; DOM.drawBtn.style.cursor = '';
+    DOM.drawBtn.innerHTML = '<span>✦</span><span>Вытянуть карту</span>';
+    DOM.resetMsg.style.display = 'inline';
+    setTimeout(() => { DOM.resetMsg.style.display = 'none'; }, 3000);
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SPREAD
+// ═══════════════════════════════════════════════════════════════════════════════
+const Spread = {
+  _current: 'past', _isDrawing: false, _cards: [],
+
+  select(type) {
+    this._current = type;
+    const s = SPREADS[type];
+    DOM.spreadDropdownTitle.textContent = s.label; DOM.spreadDropdownDesc.textContent = s.desc;
+    Object.keys(SPREADS).forEach(k => { const el = document.getElementById('spreadOpt_'+k); el.classList.toggle('selected', k===type); el.setAttribute('aria-selected', k===type?'true':'false'); });
+    this.closeDropdown(); this.updateHint(); this.resetUI();
+  },
+  updateHint() { const s = SPREADS[this._current]; DOM.spreadHint.innerHTML = s.hint; DOM.spreadQuestion.placeholder = s.placeholder; },
+  toggleDropdown() { const o = DOM.spreadDropdownMenu.classList.contains('open'); DOM.spreadDropdownMenu.classList.toggle('open',!o); DOM.spreadDropdownBtn.classList.toggle('open',!o); },
+  closeDropdown() { DOM.spreadDropdownMenu.classList.remove('open'); DOM.spreadDropdownBtn.classList.remove('open'); },
+  resetUI() { DOM.spreadCardsRow.style.display = 'none'; DOM.spreadReadingBox.style.display = 'none'; DOM.spreadDrawBtn.disabled = false; DOM.spreadDrawBtn.style.opacity = ''; DOM.spreadDrawBtn.style.cursor = ''; DOM.spreadDrawBtn.innerHTML = '<span>✦</span><span>Разложить карты</span>'; DOM.spreadDrawBtn.setAttribute('data-action','draw-spread'); this._cards = []; },
+
+  async draw() {
+    if (this._isDrawing) return;
+    this._isDrawing = true; DOM.spreadDrawBtn.disabled = true; DOM.spreadDrawBtn.style.opacity = '0.5';
+    const question = Validate.question(DOM.spreadQuestion.value.trim()).clean;
+    const spread = SPREADS[this._current];
+    this._cards = DECK.getRandom(3).map(card => ({ card, isReversed: Math.random() < CONFIG.reversedProbability }));
+    DOM.spreadCardsRow.style.display = 'flex';
+    spread.slots.forEach((label, i) => { document.getElementById('slotLabel'+i).textContent = label; });
+    for (let i=0;i<3;i++) { await sleep(CONFIG.spreadRevealDelay + i*CONFIG.spreadRevealStep); this._revealMiniCard(i, this._cards[i]); }
+    DOM.spreadReadingBox.style.display = 'block';
+    DOM.spreadReadingContent.innerHTML = '<div class="reading-text loading">Читаю расклад<span class="cursor"></span></div>';
+    await sleep(400);
+
+    const prompt = API.buildSpreadPrompt(this._cards, spread, question);
+    const raw = await API.call({ prompt, maxTokens: CONFIG.apiMaxTokensSpread });
+    let parsed = null;
+    if (raw) { try { parsed = JSON.parse(raw.replace(/```json|```/g, '').trim()); } catch(e) {} }
+    this._renderReading(this._cards, spread, parsed);
+
+    this._isDrawing = false;
+    DOM.spreadDrawBtn.style.opacity = '0.4'; DOM.spreadDrawBtn.style.cursor = 'default';
+    DOM.spreadDrawBtn.innerHTML = '<span>↺</span><span>Новый расклад</span>';
+    DOM.spreadDrawBtn.disabled = false;
+    DOM.spreadDrawBtn.setAttribute('data-action', 'reset-spread');
+    History.save({ type: 'spread', date: new Date().toLocaleDateString('ru-RU', { day:'numeric', month:'short' }), name: spread.label, symbol: this._cards.map(({card})=>card.symbol).join(''), ts: Date.now() });
+    History.render();
+    Events.emit('spread:drawn', { cards: this._cards, spread: this._current });
+  },
+
+  _revealMiniCard(i, { card, isReversed }) {
+    const el = document.getElementById('spreadCard'+i); el.classList.remove('face-down');
+    el.innerHTML = '<div class="spread-mini-symbol" style="'+(isReversed?'transform:rotate(180deg)':'')+'">'+card.symbol+'</div><div class="spread-mini-name">'+card.name+'</div>'+(isReversed?'<div class="spread-mini-rev">перевёрнутая</div>':'');
+  },
+
+  _renderReading(drawnCards, spread, parsed) {
+    const el = DOM.spreadReadingContent;
+    if (!parsed) { el.innerHTML = drawnCards.map(({card,isReversed},i) => '<div class="spread-reading-card-block"><div class="spread-reading-card-label">'+spread.slots[i]+'</div><div class="spread-reading-card-name">'+card.name+(isReversed?' (перевёрнутая)':'')+'</div><div class="spread-reading-card-text">Карта несёт энергию: '+card.keywords+'. Обрати на неё внимание в контексте этой позиции.</div></div>').join(''); return; }
+    const blocks = parsed.cards.map(({slot,text},i) => { const {card,isReversed}=drawnCards[i]; return '<div class="spread-reading-card-block"><div class="spread-reading-card-label">'+slot+'</div><div class="spread-reading-card-name">'+card.name+(isReversed?' · перевёрнутая':'')+'</div><div class="spread-reading-card-text">'+text+'</div></div>'; }).join('');
+    const summary = parsed.summary ? '<div class="spread-reading-summary"><span class="spread-reading-summary-label">Общий вывод</span>'+parsed.summary+'</div>' : '';
+    el.innerHTML = blocks + summary;
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EVENT DELEGATION
+// ═══════════════════════════════════════════════════════════════════════════════
+document.addEventListener('click', (e) => {
+  const target = e.target.closest('[data-action]');
+  if (!target) return;
+  const actions = {
+    'draw-card': () => CardOfDay.draw(), 'open-drawer': () => Profile.open(), 'close-drawer': () => Profile.close(),
+    'save-profile': () => Profile.save(), 'save-key': () => UI.saveApiKey(), 'reset-today': () => CardOfDay.reset(),
+    'mode-day': () => UI.switchMode('day'), 'mode-spread': () => UI.switchMode('spread'),
+    'toggle-spread-dropdown': () => Spread.toggleDropdown(), 'draw-spread': () => Spread.draw(),
+    'reset-spread': () => { Spread.resetUI(); }, 'select-spread': () => Spread.select(target.dataset.spread),
+    'google-signin': () => window.signInWithGoogle(), 'sign-out': () => window.signOutUser(),
+  };
+  const fn = actions[target.dataset.action];
+  if (fn) fn();
+});
+
+document.addEventListener('click', (e) => { if (DOM.spreadPicker && !DOM.spreadPicker.contains(e.target)) Spread.closeDropdown(); });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// KEYBOARD ACCESSIBILITY
+// ═══════════════════════════════════════════════════════════════════════════════
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { if (DOM.profileDrawer.classList.contains('open')) Profile.close(); if (DOM.spreadDropdownMenu.classList.contains('open')) Spread.closeDropdown(); }
+  if ((e.key === 'Enter' || e.key === ' ') && document.activeElement === DOM.cardBack) { e.preventDefault(); CardOfDay.draw(); }
+});
+
+DOM.profileDrawer && DOM.profileDrawer.addEventListener('keydown', (e) => {
+  if (e.key !== 'Tab') return;
+  const focusable = DOM.profileDrawer.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// APP INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+const App = {
+  init(opts = {}) {
+    cacheDOM(); Notify.init();
+    DOM.dateLabel.textContent = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    const savedKey = Store.get(CONFIG.storageKeys.apiKey, '');
+    if (savedKey) { DOM.apiKeyInput.value = savedKey; DOM.keySavedMsg.style.display = 'inline-block'; }
+    if (!opts.skipProfile) {
+      const profile = Profile.data;
+      if (profile) Profile.applyToUI(Profile._toFlat(profile));
+      History.render(); CardOfDay.restore();
+    }
+    Spread.updateHint(); UI.startCountdown();
+  },
+};
+
+cacheDOM();
+App.init();
+</script>
+</div>
+</body>
+</html>
