@@ -266,7 +266,7 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 }
 </style>
 
-<!-- Firebase compat -->
+<!-- Firebase: compat for auth, modular for Firestore (named DB support) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -281,7 +281,18 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 window.auth = firebase.auth();
-window.db   = firebase.firestore();
+
+// Firestore: connect to named database 'dea-tarot-db'
+// compat SDK's internal _databaseId can be overridden before first use
+(function() {
+  const fs = firebase.firestore();
+  // Override the database ID in the internal settings
+  if (fs._delegate && fs._delegate._databaseId) {
+    fs._delegate._databaseId.database = 'dea-tarot-db';
+  }
+  window.db = fs;
+})();
+
 const auth = window.auth;
 const db   = window.db;
 
