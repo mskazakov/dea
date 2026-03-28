@@ -810,6 +810,7 @@ const API = {
 
   async _callDirect(prompt, maxTokens) {
     const key = Store.get(CONFIG.storageKeys.apiKey, ''); // TODO: backend-proxy
+    console.log('[Dea API] key exists:', !!key, 'key prefix:', key ? key.slice(0, 10) + '...' : 'none');
     if (!key) return null;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), CONFIG.apiTimeout);
@@ -821,10 +822,13 @@ const API = {
         signal: controller.signal,
       });
       clearTimeout(timeout);
+      console.log('[Dea API] response status:', res.status);
       const data = await res.json();
+      console.log('[Dea API] response data:', JSON.stringify(data).slice(0, 300));
       return data?.content?.[0]?.text || null;
     } catch(e) {
       clearTimeout(timeout);
+      console.log('[Dea API] ❌ fetch error:', e.name, e.message);
       if (e.name === 'AbortError') Notify.show('Запрос слишком долгий — используем встроенное предсказание', 'info');
       else log('warn', 'API error:', e.message);
       return null;
