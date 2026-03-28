@@ -1043,19 +1043,29 @@ const Spread = {
     await sleep(400);
 
     const prompt = API.buildSpreadPrompt(this._cards, spread, question);
+    console.log('[Dea Spread] prompt length:', prompt.length);
     const raw = await API.call({ prompt, maxTokens: CONFIG.apiMaxTokensSpread });
+    console.log('[Dea Spread] raw response:', raw ? raw.slice(0, 300) : 'NULL');
     let parsed = null;
     if (raw) {
       try {
         parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+        console.log('[Dea Spread] ✅ direct JSON parse OK');
       } catch(e) {
+        console.log('[Dea Spread] direct parse failed:', e.message);
         // try extracting JSON from mixed text
         const jsonMatch = raw.match(/\{[\s\S]*"cards"[\s\S]*\}/);
         if (jsonMatch) {
-          try { parsed = JSON.parse(jsonMatch[0]); } catch(e2) {}
+          console.log('[Dea Spread] regex match found, length:', jsonMatch[0].length);
+          try { parsed = JSON.parse(jsonMatch[0]); console.log('[Dea Spread] ✅ regex JSON parse OK'); } catch(e2) { console.log('[Dea Spread] regex parse failed:', e2.message); }
+        } else {
+          console.log('[Dea Spread] ❌ no JSON found in response');
         }
       }
+    } else {
+      console.log('[Dea Spread] ❌ API returned null — check API key and network');
     }
+    console.log('[Dea Spread] parsed:', parsed ? 'OK with ' + (parsed.cards?.length || 0) + ' cards' : 'NULL → fallback');
     this._renderReading(this._cards, spread, parsed);
 
     this._isDrawing = false;
