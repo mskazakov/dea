@@ -725,7 +725,7 @@ const Profile = {
     this.updateBadge();
   },
 
-  save() {
+  async save() {
     // === DIAGNOSTIC: remove after debugging ===
     const _uid = window._uid || (auth.currentUser && auth.currentUser.uid);
     const _diagMsg = 'save() called. uid=' + _uid;
@@ -747,11 +747,19 @@ const Profile = {
     const uid = window._uid || (auth.currentUser && auth.currentUser.uid);
     console.log('[Dea Diag] Profile.save() uid=' + uid + ' data=' + JSON.stringify(this._toFlat(data)).slice(0,200));
     if (uid) {
-      window.db.collection('users').doc(uid).set(this._toFlat(data), { merge: true })
-        .then(() => { console.log('[Dea Diag] ✅ Profile.save() Firestore OK'); Notify.show('Профиль сохранён', 'success'); })
-        .catch(e => { console.log('[Dea Diag] ❌ Profile.save() Firestore FAILED: ' + e.message + ' code=' + e.code); Notify.show('Не удалось сохранить в облако: ' + e.message, 'error'); });
+      const flatData = this._toFlat(data);
+      console.log('[Dea Diag] Writing to Firestore: users/' + uid, flatData);
+      try {
+        await window.db.collection('users').doc(uid).set(flatData, { merge: true });
+        console.log('[Dea Diag] ✅ Firestore write SUCCESS');
+        Notify.show('Профиль сохранён в облако', 'success');
+      } catch(e) {
+        console.error('[Dea Diag] ❌ Firestore write FAILED:', e);
+        alert('Firestore error: ' + e.message + '\nCode: ' + e.code);
+        Notify.show('Ошибка записи: ' + e.message, 'error');
+      }
     } else {
-      console.log('[Dea Diag] ⚠️ Profile.save() — no uid, saved only locally');
+      console.log('[Dea Diag] ⚠️ No uid');
       Notify.show('Войди через Google чтобы данные синхронизировались', 'info');
     }
     DOM.profileSavedMsg.style.display = 'inline-block';
