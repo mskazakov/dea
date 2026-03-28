@@ -121,6 +121,8 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 .reading-title { font-family: var(--font-serif); font-size: 13px; font-style: italic; color: var(--gold); letter-spacing: 0.08em; margin-bottom: 16px; }
 .reading-text { font-family: var(--font-serif); font-size: 19px; line-height: 1.75; color: var(--ink); font-weight: 300; }
 .reading-text.loading { color: var(--ink-muted); font-style: italic; font-size: 16px; animation: pulse 2s ease-in-out infinite; }
+.reflection-box { background: var(--bg); border-color: var(--gold-light); }
+.reflection-text { font-style: italic; color: var(--ink-muted); }
 .cursor { display: inline-block; width: 2px; height: 1em; background: var(--gold); vertical-align: text-bottom; animation: blink 1s step-end infinite; margin-left: 2px; }
 
 /* ═══ API NOTICE ═══ */
@@ -297,10 +299,8 @@ const auth = window.auth;
 const db   = window.db;
 
 auth.onAuthStateChanged(async (user) => {
-  const _diag = []; // diagnostic log
   if (user) {
     window._uid = user.uid;
-    _diag.push('✅ Auth: uid=' + user.uid.slice(0,8) + '...');
     document.getElementById('drawerLoggedIn').style.display = 'block';
     document.getElementById('drawerLoggedOut').style.display = 'none';
     document.getElementById('drawerUserName').textContent = user.displayName || '';
@@ -317,49 +317,33 @@ auth.onAuthStateChanged(async (user) => {
     }
     if (typeof App !== 'undefined' && App.init) App.init({ skipProfile: true });
     try {
-      _diag.push('⏳ Firestore: reading users/' + user.uid.slice(0,8) + '...');
       const snap = await window.db.collection('users').doc(user.uid).get();
-      _diag.push('📦 Firestore snap.exists=' + snap.exists);
       if (snap.exists) {
-        const fsData = snap.data();
-        _diag.push('📋 Firestore data: ' + JSON.stringify(fsData).slice(0,200));
-        Profile.applyToUI(fsData);
-        _diag.push('✅ Profile applied from Firestore');
+        Profile.applyToUI(snap.data());
       } else {
-        _diag.push('⚠️ Firestore empty — checking localStorage');
         const local = Store.get(CONFIG.storageKeys.profile);
-        _diag.push('💾 localStorage profile: ' + JSON.stringify(local).slice(0,200));
         if (local) {
           Profile.applyToUI(local);
-          const flat = Profile._toFlat(Profile.data);
-          _diag.push('⬆️ Pushing to Firestore: ' + JSON.stringify(flat).slice(0,200));
-          window.db.collection('users').doc(user.uid).set(flat, { merge: true })
-            .then(() => { _diag.push('✅ Firestore push OK'); console.log('[Dea Diag]', _diag.join('\n')); })
-            .catch(e => { _diag.push('❌ Firestore push FAILED: ' + e.message + ' code=' + e.code); console.log('[Dea Diag]', _diag.join('\n')); });
+          window.db.collection('users').doc(user.uid).set(Profile._toFlat(Profile.data), { merge: true })
+            .catch(e => log('warn', 'Profile migration failed:', e.message));
         }
         const localHistory = Store.get(CONFIG.storageKeys.history, []);
-        _diag.push('💾 localStorage history: ' + localHistory.length + ' items');
         if (localHistory.length) {
           const batch = window.db.batch();
           localHistory.forEach(entry => {
-            const ref = window.db.collection('users').doc(user.uid).collection('history').doc();
-            batch.set(ref, entry);
+            batch.set(window.db.collection('users').doc(user.uid).collection('history').doc(), entry);
           });
-          batch.commit().catch(e => { _diag.push('❌ History batch FAILED: ' + e.message); console.log('[Dea Diag]', _diag.join('\n')); });
+          batch.commit().catch(e => log('warn', 'History migration failed:', e.message));
         }
       }
     } catch(e) {
-      _diag.push('❌ Firestore read FAILED: ' + e.message + ' code=' + (e.code||'none'));
+      log('warn', 'Firestore profile read failed:', e.message);
       if (typeof Notify !== 'undefined') Notify.show('Не удалось загрузить профиль из облака', 'error');
-      if (typeof Store !== 'undefined') {
-        const local = Store.get(CONFIG.storageKeys.profile);
-        if (local && typeof Profile !== 'undefined') Profile.applyToUI(local);
-      }
+      const local = typeof Store !== 'undefined' ? Store.get(CONFIG.storageKeys.profile) : null;
+      if (local && typeof Profile !== 'undefined') Profile.applyToUI(local);
     }
     if (typeof History !== 'undefined') History.render();
     if (typeof CardOfDay !== 'undefined') CardOfDay.restore();
-    _diag.push('🏁 Auth flow complete');
-    console.log('[Dea Diag]\n' + _diag.join('\n'));
   } else {
     window._uid = null;
     document.getElementById('drawerLoggedIn').style.display = 'none';
@@ -383,7 +367,7 @@ window.loadHistory = async function() {
       .collection('history').orderBy('ts', 'desc').limit(20).get();
     return snap.docs.map(d => d.data());
   } catch(e) {
-    log('error', 'Firestore history read failed:', e.message, e.code);
+    log('warn', 'Firestore history read failed:', e.message);
     return Store.get(CONFIG.storageKeys.history, []);
   }
 };
@@ -482,6 +466,10 @@ window.loadHistory = async function() {
 
 <div class="reading-area" id="readingArea" style="display:none" data-testid="reading-area">
   <div class="reading-box"><div class="reading-title">Послание дня</div><div class="reading-text" id="readingText"></div></div>
+  <div class="reading-box reflection-box" id="reflectionBox" style="display:none; margin-top:16px;">
+    <div class="reading-title">Вопрос для рефлексии</div>
+    <div class="reading-text reflection-text" id="reflectionText"></div>
+  </div>
 </div>
 
 <div class="api-notice" id="apiNotice">
@@ -531,10 +519,10 @@ const CONFIG = {
   spreadRevealDelay: 300,
   spreadRevealStep: 250,
   apiModel: 'claude-sonnet-4-6',
-  apiMaxTokensDay: 300,
+  apiMaxTokensDay: 400,
   apiMaxTokensSpread: 1200,
   apiTimeout: 25000,
-  debug: true,
+  debug: false,
   storageKeys: {
     apiKey: 'tarot_api_key',
     profile: 'tarot_profile',
@@ -620,7 +608,8 @@ function cacheDOM() {
    'spreadDropdownTitle','spreadDropdownDesc','spreadHint','spreadQuestion','spreadDrawBtn',
    'spreadCardsRow','spreadReadingBox','spreadReadingContent','profileDrawer','drawerOverlay',
    'natalBadge','natalSign','natalText','birthDate','birthTime','birthPlace','userName',
-   'userGender','profileSavedMsg','historyList','spreadPicker'
+   'userGender','profileSavedMsg','historyList','spreadPicker',
+   'reflectionBox','reflectionText'
   ].forEach(id => { DOM[id] = document.getElementById(id); });
 }
 
@@ -637,28 +626,28 @@ const Events = {
 // DATA
 // ═══════════════════════════════════════════════════════════════════════════════
 const MAJOR_ARCANA = [
-  { num: "0",    name: "Шут",              symbol: "🌀", keywords: "начало · свобода · риск" },
-  { num: "I",    name: "Маг",              symbol: "⚡", keywords: "воля · мастерство · действие" },
-  { num: "II",   name: "Верховная Жрица",  symbol: "🌙", keywords: "интуиция · тайна · знание" },
-  { num: "III",  name: "Императрица",      symbol: "🌿", keywords: "плодородие · красота · природа" },
-  { num: "IV",   name: "Император",        symbol: "🏛️", keywords: "власть · структура · стабильность" },
-  { num: "V",    name: "Иерофант",         symbol: "🔑", keywords: "традиция · учение · духовность" },
-  { num: "VI",   name: "Влюблённые",       symbol: "💫", keywords: "выбор · союз · гармония" },
-  { num: "VII",  name: "Колесница",        symbol: "🌠", keywords: "победа · контроль · движение" },
-  { num: "VIII", name: "Сила",             symbol: "🦁", keywords: "терпение · смелость · внутренняя сила" },
-  { num: "IX",   name: "Отшельник",        symbol: "🕯️", keywords: "одиночество · мудрость · поиск" },
-  { num: "X",    name: "Колесо Фортуны",   symbol: "☸️", keywords: "цикл · судьба · перемены" },
-  { num: "XI",   name: "Справедливость",   symbol: "⚖️", keywords: "баланс · истина · карма" },
-  { num: "XII",  name: "Повешенный",       symbol: "🔄", keywords: "пауза · жертва · перспектива" },
-  { num: "XIII", name: "Смерть",           symbol: "🌑", keywords: "трансформация · конец · обновление" },
-  { num: "XIV",  name: "Умеренность",      symbol: "🌊", keywords: "равновесие · терпение · цель" },
-  { num: "XV",   name: "Дьявол",           symbol: "⛓️", keywords: "привязанность · материальность · тень" },
-  { num: "XVI",  name: "Башня",            symbol: "⚡", keywords: "потрясение · откровение · хаос" },
-  { num: "XVII", name: "Звезда",           symbol: "⭐", keywords: "надежда · вдохновение · исцеление" },
-  { num: "XVIII",name: "Луна",             symbol: "🌕", keywords: "иллюзия · страх · подсознание" },
-  { num: "XIX",  name: "Солнце",           symbol: "☀️", keywords: "радость · успех · витальность" },
-  { num: "XX",   name: "Суд",              symbol: "🎺", keywords: "пробуждение · искупление · призыв" },
-  { num: "XXI",  name: "Мир",              symbol: "🌍", keywords: "завершение · единство · триумф" },
+  { num: "0",    name: "Шут",              symbol: "🌀", keywords: "начало · свобода · риск",                  astro: "Уран, воздух" },
+  { num: "I",    name: "Маг",              symbol: "⚡", keywords: "воля · мастерство · действие",             astro: "Меркурий" },
+  { num: "II",   name: "Верховная Жрица",  symbol: "🌙", keywords: "интуиция · тайна · знание",               astro: "Луна" },
+  { num: "III",  name: "Императрица",      symbol: "🌿", keywords: "плодородие · красота · природа",          astro: "Венера" },
+  { num: "IV",   name: "Император",        symbol: "🏛️", keywords: "власть · структура · стабильность",       astro: "Овен, Марс" },
+  { num: "V",    name: "Иерофант",         symbol: "🔑", keywords: "традиция · учение · духовность",          astro: "Телец, Венера" },
+  { num: "VI",   name: "Влюблённые",       symbol: "💫", keywords: "выбор · союз · гармония",                 astro: "Близнецы, Меркурий" },
+  { num: "VII",  name: "Колесница",        symbol: "🌠", keywords: "победа · контроль · движение",            astro: "Рак, Луна" },
+  { num: "VIII", name: "Сила",             symbol: "🦁", keywords: "терпение · смелость · внутренняя сила",   astro: "Лев, Солнце" },
+  { num: "IX",   name: "Отшельник",        symbol: "🕯️", keywords: "одиночество · мудрость · поиск",         astro: "Дева, Меркурий" },
+  { num: "X",    name: "Колесо Фортуны",   symbol: "☸️", keywords: "цикл · судьба · перемены",               astro: "Юпитер" },
+  { num: "XI",   name: "Справедливость",   symbol: "⚖️", keywords: "баланс · истина · карма",                astro: "Весы, Венера" },
+  { num: "XII",  name: "Повешенный",       symbol: "🔄", keywords: "пауза · жертва · перспектива",            astro: "Нептун, вода" },
+  { num: "XIII", name: "Смерть",           symbol: "🌑", keywords: "трансформация · конец · обновление",      astro: "Скорпион, Плутон" },
+  { num: "XIV",  name: "Умеренность",      symbol: "🌊", keywords: "равновесие · терпение · цель",            astro: "Стрелец, Юпитер" },
+  { num: "XV",   name: "Дьявол",           symbol: "⛓️", keywords: "привязанность · материальность · тень",  astro: "Козерог, Сатурн" },
+  { num: "XVI",  name: "Башня",            symbol: "⚡", keywords: "потрясение · откровение · хаос",          astro: "Марс" },
+  { num: "XVII", name: "Звезда",           symbol: "⭐", keywords: "надежда · вдохновение · исцеление",       astro: "Водолей, Уран" },
+  { num: "XVIII",name: "Луна",             symbol: "🌕", keywords: "иллюзия · страх · подсознание",           astro: "Рыбы, Нептун" },
+  { num: "XIX",  name: "Солнце",           symbol: "☀️", keywords: "радость · успех · витальность",           astro: "Солнце" },
+  { num: "XX",   name: "Суд",              symbol: "🎺", keywords: "пробуждение · искупление · призыв",       astro: "Плутон" },
+  { num: "XXI",  name: "Мир",              symbol: "🌍", keywords: "завершение · единство · триумф",          astro: "Сатурн" },
 ];
 
 const DECK = {
@@ -668,19 +657,19 @@ const DECK = {
 };
 
 const ZODIAC = [
-  { sign: 'Козерог', symbol: '♑', start: [12,22], end: [1,19] },
-  { sign: 'Водолей', symbol: '♒', start: [1,20], end: [2,18] },
-  { sign: 'Рыбы', symbol: '♓', start: [2,19], end: [3,20] },
-  { sign: 'Овен', symbol: '♈', start: [3,21], end: [4,19] },
-  { sign: 'Телец', symbol: '♉', start: [4,20], end: [5,20] },
-  { sign: 'Близнецы', symbol: '♊', start: [5,21], end: [6,20] },
-  { sign: 'Рак', symbol: '♋', start: [6,21], end: [7,22] },
-  { sign: 'Лев', symbol: '♌', start: [7,23], end: [8,22] },
-  { sign: 'Дева', symbol: '♍', start: [8,23], end: [9,22] },
-  { sign: 'Весы', symbol: '♎', start: [9,23], end: [10,22] },
-  { sign: 'Скорпион', symbol: '♏', start: [10,23], end: [11,21] },
-  { sign: 'Стрелец', symbol: '♐', start: [11,22], end: [12,21] },
-  { sign: 'Козерог', symbol: '♑', start: [12,22], end: [12,31] },
+  { sign: 'Козерог',   symbol: '♑', element: 'земля', planet: 'Сатурн',  modality: 'кардинальный', start: [12,22], end: [1,19] },
+  { sign: 'Водолей',   symbol: '♒', element: 'воздух',planet: 'Уран',    modality: 'фиксированный',start: [1,20],  end: [2,18] },
+  { sign: 'Рыбы',      symbol: '♓', element: 'вода',  planet: 'Нептун',  modality: 'мутабельный',  start: [2,19],  end: [3,20] },
+  { sign: 'Овен',      symbol: '♈', element: 'огонь', planet: 'Марс',    modality: 'кардинальный', start: [3,21],  end: [4,19] },
+  { sign: 'Телец',     symbol: '♉', element: 'земля', planet: 'Венера',  modality: 'фиксированный',start: [4,20],  end: [5,20] },
+  { sign: 'Близнецы',  symbol: '♊', element: 'воздух',planet: 'Меркурий',modality: 'мутабельный',  start: [5,21],  end: [6,20] },
+  { sign: 'Рак',       symbol: '♋', element: 'вода',  planet: 'Луна',    modality: 'кардинальный', start: [6,21],  end: [7,22] },
+  { sign: 'Лев',       symbol: '♌', element: 'огонь', planet: 'Солнце',  modality: 'фиксированный',start: [7,23],  end: [8,22] },
+  { sign: 'Дева',      symbol: '♍', element: 'земля', planet: 'Меркурий',modality: 'мутабельный',  start: [8,23],  end: [9,22] },
+  { sign: 'Весы',      symbol: '♎', element: 'воздух',planet: 'Венера',  modality: 'кардинальный', start: [9,23],  end: [10,22] },
+  { sign: 'Скорпион',  symbol: '♏', element: 'вода',  planet: 'Плутон',  modality: 'фиксированный',start: [10,23], end: [11,21] },
+  { sign: 'Стрелец',   symbol: '♐', element: 'огонь', planet: 'Юпитер',  modality: 'мутабельный',  start: [11,22], end: [12,21] },
+  { sign: 'Козерог',   symbol: '♑', element: 'земля', planet: 'Сатурн',  modality: 'кардинальный', start: [12,22], end: [12,31] },
 ];
 
 const SPREADS = {
@@ -737,13 +726,6 @@ const Profile = {
   },
 
   async save() {
-    // === DIAGNOSTIC: remove after debugging ===
-    const _uid = window._uid || (auth.currentUser && auth.currentUser.uid);
-    const _diagMsg = 'save() called. uid=' + _uid;
-    console.log('[Dea]', _diagMsg);
-    try { Notify.show(_diagMsg, 'info'); } catch(e) { console.log('[Dea] Notify failed:', e); }
-    // === END DIAGNOSTIC ===
-
     const nc = Validate.name(DOM.userName.value), dc = Validate.date(DOM.birthDate.value), tc = Validate.time(DOM.birthTime.value);
     DOM.userName.classList.toggle('invalid', !nc.valid);
     DOM.birthDate.classList.toggle('invalid', !dc.valid);
@@ -756,21 +738,15 @@ const Profile = {
     this._data = data;
     Store.set(CONFIG.storageKeys.profile, data);
     const uid = window._uid || (auth.currentUser && auth.currentUser.uid);
-    console.log('[Dea Diag] Profile.save() uid=' + uid + ' data=' + JSON.stringify(this._toFlat(data)).slice(0,200));
     if (uid) {
-      const flatData = this._toFlat(data);
-      console.log('[Dea Diag] Writing to Firestore: users/' + uid, flatData);
       try {
-        await window.db.collection('users').doc(uid).set(flatData, { merge: true });
-        console.log('[Dea Diag] ✅ Firestore write SUCCESS');
-        Notify.show('Профиль сохранён в облако', 'success');
+        await window.db.collection('users').doc(uid).set(this._toFlat(data), { merge: true });
+        Notify.show('Профиль сохранён', 'success');
       } catch(e) {
-        console.error('[Dea Diag] ❌ Firestore write FAILED:', e);
-        alert('Firestore error: ' + e.message + '\nCode: ' + e.code);
-        Notify.show('Ошибка записи: ' + e.message, 'error');
+        log('warn', 'Firestore save error:', e.message);
+        Notify.show('Сохранено локально — нет связи с облаком', 'info');
       }
     } else {
-      console.log('[Dea Diag] ⚠️ No uid');
       Notify.show('Войди через Google чтобы данные синхронизировались', 'info');
     }
     DOM.profileSavedMsg.style.display = 'inline-block';
@@ -795,13 +771,25 @@ const Profile = {
     const parts = [];
     if (d.name) parts.push('имя — ' + d.name);
     if (d.gender) { const gmap = { female: 'женский', male: 'мужской', other: 'другой' }; parts.push('пол — ' + (gmap[d.gender]||d.gender)); }
-    if (d.birth?.date) { const z = getZodiac(d.birth.date); const age = new Date().getFullYear() - new Date(d.birth.date).getFullYear(); if (z) parts.push('знак зодиака — ' + z.sign); parts.push('примерный возраст — ' + age + ' лет'); }
+    if (d.birth?.date) {
+      const z = getZodiac(d.birth.date);
+      const age = new Date().getFullYear() - new Date(d.birth.date).getFullYear();
+      if (z) {
+        parts.push('знак зодиака — ' + z.sign + ' (' + z.element + ', ' + z.planet + ', ' + z.modality + ')');
+      }
+      parts.push('примерный возраст — ' + age + ' лет');
+    }
     if (d.birth?.time) parts.push('время рождения — ' + d.birth.time);
     if (d.birth?.place) parts.push('место рождения — ' + d.birth.place);
     if (!parts.length) return '';
+    // current date context
+    const now = new Date();
+    const dayNames = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+    const seasons = {0:'зима',1:'зима',2:'весна',3:'весна',4:'весна',5:'лето',6:'лето',7:'лето',8:'осень',9:'осень',10:'осень',11:'зима'};
+    const dateCtx = 'Сегодня ' + dayNames[now.getDay()] + ', сезон — ' + seasons[now.getMonth()] + '.';
     const nameStr = d.name ? ' Обращайся к пользователю по имени — ' + d.name + '.' : '';
     const genderStr = d.gender === 'female' ? ' Используй женский род в обращении.' : d.gender === 'male' ? ' Используй мужской род в обращении.' : '';
-    return '\n\nКонтекст пользователя: ' + parts.join(', ') + '.' + nameStr + genderStr + ' Тонко учти эти данные — не перечисляй их дословно.';
+    return '\n\nКонтекст пользователя: ' + parts.join(', ') + '.' + nameStr + genderStr + ' ' + dateCtx + ' Тонко учти эти данные — не перечисляй их дословно.';
   },
 
   open() { DOM.profileDrawer.classList.add('open'); DOM.drawerOverlay.classList.add('open'); document.body.style.overflow = 'hidden'; const f = DOM.profileDrawer.querySelector('button, input, select, textarea'); if (f) f.focus(); },
@@ -846,14 +834,16 @@ const API = {
   async _callProxy(prompt, maxTokens) { log('warn', 'Proxy mode not configured'); return null; },
 
   buildDayPrompt(card, isReversed) {
-    return 'Ты — мудрый таролог. Сделай короткое ежедневное предсказание (3-4 предложения) для карты "' + card.name + '"' + (isReversed ? ' в перевёрнутом положении' : '') + '. Ключевые слова карты: ' + card.keywords + '. Говори тепло, образно, конкретно — дай совет на сегодняшний день. Не упоминай само слово "таро", не нумеруй.' + Profile.buildContext();
+    const birthCtx = Profile.buildContext();
+    const astroNote = card.astro ? ' Астрологическое соответствие карты: ' + card.astro + '.' : '';
+    return 'Ты — таролог-астролог. Карта дня: "' + card.name + '"' + (isReversed ? ' (перевёрнутая)' : '') + '. Ключевые слова: ' + card.keywords + '.' + astroNote + birthCtx + '\n\nСтиль: поэтичный но понятный, как хороший гороскоп. Пиши так, чтобы человек без знания астрологии всё понял с первого прочтения. Никакого эзотерического жаргона — не используй слова вроде «фиксированный знак», «водная стихия», «трансформативная энергия», «вибрации». Вместо этого переводи астрологические смыслы на язык чувств и повседневных ситуаций.\n\nФормат ответа:\n1. «reading» — 3 предложения. Тёплое, конкретное послание на сегодня. Одна мысль, один совет — без перечислений.\n2. «reflection» — 1 вопрос для саморефлексии. Короткий, личный, неочевидный.\n3. Имя — максимум раз. Не упоминай слово «таро».\n4. Строго JSON:\n{"reading": "...", "reflection": "..."}';
   },
 
   buildSpreadPrompt(drawnCards, spread, question) {
-    const cardLines = drawnCards.map(({card,isReversed},i) => spread.slots[i]+': «'+card.name+'»'+(isReversed?' (перевёрнутая)':'')+' — '+card.keywords).join('\n');
-    const questionLine = question ? 'Вопрос пользователя: «'+question+'»' : 'Вопрос не задан — дай общее предсказание.';
+    const cardLines = drawnCards.map(({card,isReversed},i) => spread.slots[i]+': «'+card.name+'»'+(isReversed?' (перевёрнутая)':'')+' — '+card.keywords+(card.astro?' ('+card.astro+')':'')).join('\n');
+    const questionLine = question ? 'Вопрос: «'+question+'»' : 'Вопрос не задан — дай общее предсказание.';
     const slotDesc = spread.slotMeaning.map((m,i) => '- '+spread.slots[i]+': '+m).join('\n');
-    return 'Ты — глубокий, проницательный таролог. Твоя задача — не просто описать карты, а дать живую, конкретную расшифровку которая поможет человеку увидеть свою ситуацию по-новому.'+Profile.buildContext()+'\n\nРасклад: «'+spread.label+'»\n'+questionLine+'\n\nСмысл позиций в этом раскладе:\n'+slotDesc+'\n\nКарты:\n'+cardLines+'\n\nИнструкция:\n1. Для каждой позиции напиши 3-4 предложения. Не описывай карту абстрактно — привяжи её символизм к конкретной позиции и к вопросу человека. Используй образный, но понятный язык.\n2. Общий вывод (3-4 предложения): '+spread.interplay+' Заверши конкретным, вдохновляющим посылом.\n3. Если указано имя — обращайся по имени естественно, не в каждом предложении.\n4. Отвечай строго в JSON без лишнего текста:\n{\n  "cards": [\n    {"slot": "'+spread.slots[0]+'", "text": "..."},\n    {"slot": "'+spread.slots[1]+'", "text": "..."},\n    {"slot": "'+spread.slots[2]+'", "text": "..."}\n  ],\n  "summary": "..."\n}';
+    return 'Ты — таролог-астролог.'+Profile.buildContext()+'\n\nРасклад: «'+spread.label+'»\n'+questionLine+'\n\nПозиции:\n'+slotDesc+'\n\nКарты:\n'+cardLines+'\n\nСтиль: поэтичный но понятный, как хороший гороскоп. Человек без знания астрологии должен всё понять с первого прочтения. Никакого эзотерического жаргона — не используй «фиксированный знак», «водная стихия», «трансформативная энергия», «вибрации». Переводи астрологические смыслы на язык чувств и повседневных ситуаций.\n\nФормат:\n1. Для каждой позиции — 2-3 предложения. Конкретно, по существу. Привяжи карту к вопросу и позиции, а не описывай её абстрактно.\n2. Общий вывод — 2-3 предложения: '+spread.interplay+'\n3. Имя — максимум раз. Не упоминай слово «таро».\n4. Строго JSON:\n{"cards":[{"slot":"'+spread.slots[0]+'","text":"..."},{"slot":"'+spread.slots[1]+'","text":"..."},{"slot":"'+spread.slots[2]+'","text":"..."}],"summary":"..."}';
   },
 };
 
@@ -932,6 +922,12 @@ const CardOfDay = {
     requestAnimationFrame(() => { DOM.cardInner.style.transition = ''; });
     DOM.readingArea.style.display = 'block';
     DOM.readingText.className = 'reading-text'; DOM.readingText.textContent = saved.reading;
+    if (saved.reflection) {
+      DOM.reflectionBox.style.display = 'block';
+      DOM.reflectionText.textContent = saved.reflection;
+    } else {
+      DOM.reflectionBox.style.display = 'none';
+    }
     this.setDrawnState();
     return true;
   },
@@ -954,11 +950,45 @@ const CardOfDay = {
 
     setTimeout(async () => {
       const prompt = API.buildDayPrompt(card, isReversed);
-      let text = await API.call({ prompt, maxTokens: CONFIG.apiMaxTokensDay });
-      if (text) { DOM.readingText.className = 'reading-text'; await UI.typeText(DOM.readingText, text); }
-      else { text = DEMO_READINGS[card.name] || 'Карта «'+card.name+'» несёт в себе энергию: '+card.keywords+'. Сегодня обрати внимание на то, где эти качества проявляются в твоей жизни. Используй их как компас.'; if (isReversed) text += ' Сегодня эта энергия обращена внутрь — самое время для честного внутреннего диалога.'; DOM.readingText.className = 'reading-text'; DOM.readingText.textContent = text; }
+      const raw = await API.call({ prompt, maxTokens: CONFIG.apiMaxTokensDay });
+      let reading = '';
+      let reflection = '';
+      if (raw) {
+        try {
+          // try direct JSON parse first
+          const clean = raw.replace(/```json|```/g, '').trim();
+          const parsed = JSON.parse(clean);
+          reading = (parsed.reading && parsed.reading !== '...') ? parsed.reading : '';
+          reflection = (parsed.reflection && parsed.reflection !== '...') ? parsed.reflection : '';
+        } catch(e) {
+          // try extracting JSON from mixed text (Claude sometimes adds preamble)
+          const jsonMatch = raw.match(/\{[\s\S]*"reading"[\s\S]*\}/);
+          if (jsonMatch) {
+            try {
+              const parsed = JSON.parse(jsonMatch[0]);
+              reading = (parsed.reading && parsed.reading !== '...') ? parsed.reading : '';
+              reflection = (parsed.reflection && parsed.reflection !== '...') ? parsed.reflection : '';
+            } catch(e2) {}
+          }
+          // if still no reading, treat as plain text ONLY if it doesn't look like a prompt
+          if (!reading && raw.length < 1000 && !raw.includes('Инструкция') && !raw.includes('JSON')) {
+            reading = raw;
+          }
+        }
+      }
+      if (!reading) {
+        reading = DEMO_READINGS[card.name] || 'Карта «'+card.name+'» несёт в себе энергию: '+card.keywords+'. Сегодня обрати внимание на то, где эти качества проявляются в твоей жизни. Используй их как компас.';
+        if (isReversed) reading += ' Сегодня эта энергия обращена внутрь — самое время для честного внутреннего диалога.';
+        DOM.readingText.className = 'reading-text'; DOM.readingText.textContent = reading;
+      } else {
+        DOM.readingText.className = 'reading-text'; await UI.typeText(DOM.readingText, reading);
+      }
+      if (reflection) {
+        DOM.reflectionBox.style.display = 'block';
+        DOM.reflectionText.textContent = reflection;
+      }
       this._isDrawing = false;
-      const todayData = { cardName: card.name, isReversed, reading: text };
+      const todayData = { cardName: card.name, isReversed, reading, reflection };
       Store.set(this.todayKey(), todayData);
       if (window._uid) window.db.collection('users').doc(window._uid).collection('daily').doc(this.localDateStr()).set(todayData).catch(e => log('warn', 'Daily card save error:', e.message));
       this.setDrawnState();
@@ -973,6 +1003,7 @@ const CardOfDay = {
     DOM.cardInner.style.transition = 'none'; DOM.cardInner.classList.remove('flipped');
     requestAnimationFrame(() => { DOM.cardInner.style.transition = ''; });
     DOM.readingArea.style.display = 'none';
+    DOM.reflectionBox.style.display = 'none';
     DOM.drawBtn.disabled = false; DOM.drawBtn.style.opacity = ''; DOM.drawBtn.style.cursor = '';
     DOM.drawBtn.innerHTML = '<span>✦</span><span>Вытянуть карту</span>';
     DOM.resetMsg.style.display = 'inline';
@@ -1014,7 +1045,17 @@ const Spread = {
     const prompt = API.buildSpreadPrompt(this._cards, spread, question);
     const raw = await API.call({ prompt, maxTokens: CONFIG.apiMaxTokensSpread });
     let parsed = null;
-    if (raw) { try { parsed = JSON.parse(raw.replace(/```json|```/g, '').trim()); } catch(e) {} }
+    if (raw) {
+      try {
+        parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+      } catch(e) {
+        // try extracting JSON from mixed text
+        const jsonMatch = raw.match(/\{[\s\S]*"cards"[\s\S]*\}/);
+        if (jsonMatch) {
+          try { parsed = JSON.parse(jsonMatch[0]); } catch(e2) {}
+        }
+      }
+    }
     this._renderReading(this._cards, spread, parsed);
 
     this._isDrawing = false;
