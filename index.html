@@ -895,7 +895,7 @@ const CardOfDay = {
     DOM.cardKeywords.textContent = card.keywords;
     DOM.cardInner.style.transition = 'none'; DOM.cardInner.classList.add('flipped');
     requestAnimationFrame(() => { DOM.cardInner.style.transition = ''; });
-    DOM.readingArea.style.display = 'block';
+    if (DOM.tabDay.classList.contains('active')) DOM.readingArea.style.display = 'block';
     DOM.readingText.className = 'reading-text'; DOM.readingText.textContent = saved.reading;
     if (saved.reflection) {
       DOM.reflectionBox.style.display = 'block';
