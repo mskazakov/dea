@@ -129,12 +129,6 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 .api-notice { max-width: 560px; width: 100%; margin-top: 32px; padding: 20px 24px; background: var(--gold-light); border-radius: var(--radius-md); font-size: 13px; color: var(--ink-muted); line-height: 1.7; animation: fadeUp 0.8s 0.5s ease both; }
 .api-notice a { color: var(--gold); text-decoration: none; }
 .api-notice a:hover { text-decoration: underline; }
-.api-key-row { display: flex; gap: 8px; margin-top: 12px; }
-.api-key-input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-sans); font-size: 13px; background: #fff; color: var(--ink); outline: none; }
-.api-key-input:focus { border-color: var(--gold); }
-.api-key-btn { padding: 10px 18px; background: var(--gold); color: #fff; border: none; border-radius: var(--radius-sm); font-family: var(--font-sans); font-size: 12px; letter-spacing: 0.08em; cursor: pointer; transition: opacity 0.2s; }
-.api-key-btn:hover { opacity: 0.85; }
-.api-key-saved { display: inline-block; margin-top: 8px; font-size: 12px; color: var(--gold); }
 
 /* ═══ PROFILE DRAWER ═══ */
 .profile-icon-btn { position: fixed; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 200; transition: border-color 0.2s, box-shadow 0.2s; padding: 0; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
@@ -251,7 +245,6 @@ h1 em { font-style: italic; color: var(--ink-muted); }
   .spread-mini-symbol { font-size: 28px; }
   .spread-mini-name { font-size: 11px; }
   .api-notice { padding: 16px; }
-  .api-key-row { flex-direction: column; }
   .mode-tabs { width: 100%; }
   .mode-tab { flex: 1; padding: 10px 16px; text-align: center; }
   .draw-btn { padding: 12px 24px; }
@@ -473,11 +466,7 @@ window.loadHistory = async function() {
 </div>
 
 <div class="api-notice" id="apiNotice">
-  <strong>🔑 Ключ Claude API</strong><br>
-  Чтобы предсказания генерировались через ИИ, нужен API-ключ. Получи его бесплатно на <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> и вставь сюда. Ключ сохраняется только в твоём браузере.
-  <div class="api-key-row"><input type="password" class="api-key-input" id="apiKeyInput" placeholder="sk-ant-..." data-testid="api-key-input"><button class="api-key-btn" data-action="save-key">Сохранить</button></div>
-  <span class="api-key-saved" id="keySavedMsg" style="display:none">✓ Ключ сохранён</span>
-  <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
     <span style="font-size:11px; color:var(--ink-muted);">Сбросить карту дня (для теста):</span>
     <button data-action="reset-today" style="background:none; border:1px solid var(--border); border-radius:6px; padding:5px 12px; font-family:var(--font-sans); font-size:11px; color:var(--ink-muted); cursor:pointer;">↺ Сбросить</button>
     <span id="resetMsg" style="display:none; font-size:11px; color:var(--gold);">✓ Готово — вытягивай заново</span>
@@ -524,7 +513,6 @@ const CONFIG = {
   apiTimeout: 25000,
   debug: false,
   storageKeys: {
-    apiKey: 'tarot_api_key',
     profile: 'tarot_profile',
     history: 'tarot_history',
     dayPrefix: 'tarot_day_',
@@ -591,11 +579,6 @@ const Validate = {
     if (clean.length > 50) return { valid: false, error: 'Максимум 50 символов' };
     return { valid: true, clean };
   },
-  apiKey(str) {
-    if (!str) return { valid: false, error: 'Введи ключ' };
-    if (!str.startsWith('sk-ant-') || str.length < 20) return { valid: false, error: 'Ключ должен начинаться с sk-ant-' };
-    return { valid: true };
-  },
   question(str) {
     if (!str) return { valid: true, clean: '' };
     return { valid: true, clean: str.replace(/<[^>]*>/g, '').trim().slice(0, 500) };
@@ -608,7 +591,7 @@ const Validate = {
 const DOM = {};
 function cacheDOM() {
   ['drawBtn','cardInner','cardBack','readingArea','readingText','dateLabel','cardArea',
-   'arcanaLabel','cardSymbol','cardName','cardKeywords','apiKeyInput','keySavedMsg','resetMsg',
+   'arcanaLabel','cardSymbol','cardName','cardKeywords','resetMsg',
    'tabDay','tabSpread','spreadSection','spreadDropdownBtn','spreadDropdownMenu',
    'spreadDropdownTitle','spreadDropdownDesc','spreadHint','spreadQuestion','spreadDrawBtn',
    'spreadCardsRow','spreadReadingBox','spreadReadingContent','profileDrawer','drawerOverlay',
@@ -805,35 +788,10 @@ const Profile = {
 // API
 // ═══════════════════════════════════════════════════════════════════════════════
 const API = {
-  mode: 'proxy', // 'direct' | 'proxy'
-  proxyUrl: 'https://dea-tarot-proxy.michaelkazakov97.workers.dev', // CHANGE to your Worker URL
+  proxyUrl: 'https://dea-tarot-proxy.michaelkazakov97.workers.dev',
 
   async call({ prompt, maxTokens = CONFIG.apiMaxTokensDay }) {
-    if (this.mode === 'proxy' && this.proxyUrl) return this._callProxy(prompt, maxTokens);
-    return this._callDirect(prompt, maxTokens);
-  },
-
-  async _callDirect(prompt, maxTokens) {
-    const key = Store.get(CONFIG.storageKeys.apiKey, '');
-    if (!key) return null;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), CONFIG.apiTimeout);
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: CONFIG.apiModel, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      const data = await res.json();
-      return data?.content?.[0]?.text || null;
-    } catch(e) {
-      clearTimeout(timeout);
-      if (e.name === 'AbortError') Notify.show('Запрос слишком долгий — используем встроенное предсказание', 'info');
-      else log('warn', 'API error:', e.message);
-      return null;
-    }
+    return this._callProxy(prompt, maxTokens);
   },
 
   async _callProxy(prompt, maxTokens) {
@@ -893,14 +851,6 @@ const UI = {
       if (DOM.drawBtn.disabled) DOM.drawBtn.innerHTML = '<span>🌙</span><span>Следующая карта через '+h+':'+m+':'+s+'</span>';
     }
     tick(); setInterval(tick, 1000);
-  },
-  saveApiKey() {
-    const val = DOM.apiKeyInput.value.trim();
-    const check = Validate.apiKey(val);
-    if (!check.valid) { Notify.show(check.error, 'error'); return; }
-    Store.set(CONFIG.storageKeys.apiKey, val);
-    DOM.keySavedMsg.style.display = 'inline-block';
-    Notify.show('Ключ сохранён', 'success');
   },
 };
 
@@ -1114,7 +1064,7 @@ document.addEventListener('click', (e) => {
   if (!target) return;
   const actions = {
     'draw-card': () => CardOfDay.draw(), 'open-drawer': () => Profile.open(), 'close-drawer': () => Profile.close(),
-    'save-profile': () => Profile.save(), 'save-key': () => UI.saveApiKey(), 'reset-today': () => CardOfDay.reset(),
+    'save-profile': () => Profile.save(), 'reset-today': () => CardOfDay.reset(),
     'mode-day': () => UI.switchMode('day'), 'mode-spread': () => UI.switchMode('spread'),
     'toggle-spread-dropdown': () => Spread.toggleDropdown(), 'draw-spread': () => Spread.draw(),
     'reset-spread': () => { Spread.resetUI(); }, 'select-spread': () => Spread.select(target.dataset.spread),
@@ -1150,8 +1100,6 @@ const App = {
   init(opts = {}) {
     cacheDOM(); Notify.init();
     DOM.dateLabel.textContent = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-    const savedKey = Store.get(CONFIG.storageKeys.apiKey, '');
-    if (savedKey) { DOM.apiKeyInput.value = savedKey; DOM.keySavedMsg.style.display = 'inline-block'; }
     if (!opts.skipProfile) {
       const profile = Profile.data;
       if (profile) Profile.applyToUI(Profile._toFlat(profile));
