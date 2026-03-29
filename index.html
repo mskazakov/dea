@@ -219,7 +219,26 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 .spread-reading-summary { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); font-family: var(--font-serif); font-size: 17px; line-height: 1.75; color: var(--ink); font-style: italic; }
 .spread-reading-summary-label { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-muted); font-style: normal; display: block; margin-bottom: 8px; }
 
-/* ═══ TOAST NOTIFICATIONS ═══ */
+/* ═══ DECK SELECTOR ═══ */
+.deck-list { display: flex; flex-direction: column; gap: 10px; }
+.deck-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+.deck-item:hover { border-color: var(--gold); background: var(--bg); }
+.deck-item.active { border-color: var(--gold); background: var(--gold-light); }
+.deck-item-name { font-family: var(--font-serif); font-size: 16px; color: var(--ink); margin-bottom: 3px; }
+.deck-item-desc { font-size: 12px; color: var(--ink-muted); line-height: 1.5; }
+.deck-item-meta { font-size: 10px; letter-spacing: 0.12em; color: var(--gold); margin-top: 4px; text-transform: uppercase; }
+.deck-item-check { font-size: 14px; color: var(--gold); flex-shrink: 0; width: 16px; text-align: center; }
+
+/* ═══ AI TOGGLE ═══ */
+.ai-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 20px; }
+.ai-toggle-label { font-size: 13px; color: var(--ink); line-height: 1.5; }
+.ai-toggle-label span { display: block; font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
+.ai-toggle-switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.ai-toggle-switch input { opacity: 0; width: 0; height: 0; }
+.ai-toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 22px; cursor: pointer; transition: background 0.2s; }
+.ai-toggle-slider:before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+.ai-toggle-switch input:checked + .ai-toggle-slider { background: var(--gold); }
+.ai-toggle-switch input:checked + .ai-toggle-slider:before { transform: translateX(18px); }
 .toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
 .toast { padding: 12px 24px; border-radius: var(--radius-sm); font-family: var(--font-sans); font-size: 13px; font-weight: 300; color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.15); animation: toastIn 0.3s ease both; pointer-events: auto; max-width: 360px; text-align: center; line-height: 1.5; }
 .toast.info { background: var(--toast-info); }
@@ -419,6 +438,10 @@ window.loadHistory = async function() {
         <span class="profile-saved-msg" id="profileSavedMsg">✓ Сохранено</span>
       </div>
     </div>
+    <div class="drawer-section" style="margin-top:24px;" role="region" aria-label="Колода">
+      <div class="drawer-section-title">Колода</div>
+      <div class="deck-list" id="deckList"></div>
+    </div>
     <div class="drawer-section" style="margin-top:32px; padding-bottom:40px;" role="region" aria-label="История">
       <div class="drawer-section-title">История</div>
       <div id="historyList" data-testid="history-list"></div>
@@ -486,6 +509,15 @@ window.loadHistory = async function() {
     </div>
   </div>
   <div class="spread-question-wrap" id="spreadQuestionWrap"><textarea class="spread-question-input" id="spreadQuestion" rows="2" placeholder="Напиши свой вопрос или тему..." aria-label="Вопрос для расклада"></textarea><div class="spread-hint" id="spreadHint"></div></div>
+  <div class="ai-toggle-row">
+    <div class="ai-toggle-label">AI-интерпретация
+      <span>Включи, чтобы получить персональное предсказание</span>
+    </div>
+    <label class="ai-toggle-switch">
+      <input type="checkbox" id="aiToggle" checked>
+      <span class="ai-toggle-slider"></span>
+    </label>
+  </div>
   <button class="draw-btn" id="spreadDrawBtn" data-action="draw-spread" style="margin-bottom:36px;" data-testid="spread-draw-btn"><span>✦</span><span>Разложить карты</span></button>
   <div class="spread-cards-row" id="spreadCardsRow" style="display:none" data-testid="spread-cards-row">
     <div class="spread-card-wrap"><div class="spread-card-slot-label" id="slotLabel0"></div><div class="spread-mini-card face-down" id="spreadCard0"><svg viewBox="0 0 220 380" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="200" height="360" rx="8" fill="none" stroke="#b8996a" stroke-width="1.5"/><line x1="10" y1="10" x2="210" y2="370" stroke="#b8996a" stroke-width="0.5"/><line x1="210" y1="10" x2="10" y2="370" stroke="#b8996a" stroke-width="0.5"/><circle cx="110" cy="190" r="50" fill="none" stroke="#b8996a" stroke-width="0.5"/></svg><span class="mini-back-symbol">✦</span></div></div>
@@ -597,7 +629,7 @@ function cacheDOM() {
    'spreadCardsRow','spreadReadingBox','spreadReadingContent','profileDrawer','drawerOverlay',
    'natalBadge','natalSign','natalText','birthDate','birthTime','birthPlace','userName',
    'userGender','profileSavedMsg','historyList','spreadPicker',
-   'reflectionBox','reflectionText'
+   'reflectionBox','reflectionText','aiToggle'
   ].forEach(id => { DOM[id] = document.getElementById(id); });
 }
 
@@ -611,36 +643,48 @@ const Events = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// DATA
+// DATA — DECK CATALOG
 // ═══════════════════════════════════════════════════════════════════════════════
-const MAJOR_ARCANA = [
-  { num: "0",    name: "Шут",              symbol: "🌀", keywords: "начало · свобода · риск",                  astro: "Уран, воздух" },
-  { num: "I",    name: "Маг",              symbol: "⚡", keywords: "воля · мастерство · действие",             astro: "Меркурий" },
-  { num: "II",   name: "Верховная Жрица",  symbol: "🌙", keywords: "интуиция · тайна · знание",               astro: "Луна" },
-  { num: "III",  name: "Императрица",      symbol: "🌿", keywords: "плодородие · красота · природа",          astro: "Венера" },
-  { num: "IV",   name: "Император",        symbol: "🏛️", keywords: "власть · структура · стабильность",       astro: "Овен, Марс" },
-  { num: "V",    name: "Иерофант",         symbol: "🔑", keywords: "традиция · учение · духовность",          astro: "Телец, Венера" },
-  { num: "VI",   name: "Влюблённые",       symbol: "💫", keywords: "выбор · союз · гармония",                 astro: "Близнецы, Меркурий" },
-  { num: "VII",  name: "Колесница",        symbol: "🌠", keywords: "победа · контроль · движение",            astro: "Рак, Луна" },
-  { num: "VIII", name: "Сила",             symbol: "🦁", keywords: "терпение · смелость · внутренняя сила",   astro: "Лев, Солнце" },
-  { num: "IX",   name: "Отшельник",        symbol: "🕯️", keywords: "одиночество · мудрость · поиск",         astro: "Дева, Меркурий" },
-  { num: "X",    name: "Колесо Фортуны",   symbol: "☸️", keywords: "цикл · судьба · перемены",               astro: "Юпитер" },
-  { num: "XI",   name: "Справедливость",   symbol: "⚖️", keywords: "баланс · истина · карма",                astro: "Весы, Венера" },
-  { num: "XII",  name: "Повешенный",       symbol: "🔄", keywords: "пауза · жертва · перспектива",            astro: "Нептун, вода" },
-  { num: "XIII", name: "Смерть",           symbol: "🌑", keywords: "трансформация · конец · обновление",      astro: "Скорпион, Плутон" },
-  { num: "XIV",  name: "Умеренность",      symbol: "🌊", keywords: "равновесие · терпение · цель",            astro: "Стрелец, Юпитер" },
-  { num: "XV",   name: "Дьявол",           symbol: "⛓️", keywords: "привязанность · материальность · тень",  astro: "Козерог, Сатурн" },
-  { num: "XVI",  name: "Башня",            symbol: "⚡", keywords: "потрясение · откровение · хаос",          astro: "Марс" },
-  { num: "XVII", name: "Звезда",           symbol: "⭐", keywords: "надежда · вдохновение · исцеление",       astro: "Водолей, Уран" },
-  { num: "XVIII",name: "Луна",             symbol: "🌕", keywords: "иллюзия · страх · подсознание",           astro: "Рыбы, Нептун" },
-  { num: "XIX",  name: "Солнце",           symbol: "☀️", keywords: "радость · успех · витальность",           astro: "Солнце" },
-  { num: "XX",   name: "Суд",              symbol: "🎺", keywords: "пробуждение · искупление · призыв",       astro: "Плутон" },
-  { num: "XXI",  name: "Мир",              symbol: "🌍", keywords: "завершение · единство · триумф",          astro: "Сатурн" },
+const DECK_CATALOG = [
+  {
+    id: 'major_arcana',
+    name: 'Старшие арканы',
+    description: '22 карты классического таро — архетипы судьбы и духовного пути',
+    palette: { accent: '#b8996a', surface: '#ffffff', cardBack: '#f7f4ef' },
+    reversible: true,
+    aiHint: '',
+    cards: [
+      { id: 'fool',          num: "0",     name: "Шут",              symbol: "🌀", keywords: "начало · свобода · риск",                 astro: "Уран, воздух",        interpretation: "Шут — архетип чистого начала. Он стоит на краю обрыва и не боится шагнуть в неизвестность, потому что верит: мир подхватит его. Это карта тех, кто готов начать с нуля без гарантий — и именно в этой смелости её сила." },
+      { id: 'magician',      num: "I",     name: "Маг",              symbol: "⚡", keywords: "воля · мастерство · действие",            astro: "Меркурий",            interpretation: "Маг знает, что все нужные ресурсы уже есть. Его сила — в умении превращать намерение в действие. Это карта фокуса и мастерства: когда человек точно знает, чего хочет, и направляет на это всю свою энергию." },
+      { id: 'high_priestess', num: "II",   name: "Верховная Жрица",  symbol: "🌙", keywords: "интуиция · тайна · знание",              astro: "Луна",                interpretation: "Верховная Жрица хранит то, что не говорится вслух. Она указывает на внутреннее знание — то, что чувствуется, но не объясняется логикой. Это карта паузы, тишины и доверия своей интуиции." },
+      { id: 'empress',       num: "III",   name: "Императрица",      symbol: "🌿", keywords: "плодородие · красота · природа",         astro: "Венера",              interpretation: "Императрица — воплощение изобилия и созидания. Всё, к чему она прикасается, расцветает. Это карта заботы, творчества и чувственной радости жизни — время, когда нужно питать, а не торопить." },
+      { id: 'emperor',       num: "IV",    name: "Император",        symbol: "🏛️", keywords: "власть · структура · стабильность",      astro: "Овен, Марс",          interpretation: "Император строит фундамент. Его сила — в порядке, правилах и ответственности. Это карта человека, который берёт ситуацию под контроль и создаёт условия для роста других." },
+      { id: 'hierophant',    num: "V",     name: "Иерофант",         symbol: "🔑", keywords: "традиция · учение · духовность",         astro: "Телец, Венера",       interpretation: "Иерофант — хранитель традиции и передатчик знания. Он указывает на путь через обучение, наставничество и следование проверенному. Это карта институтов, ритуалов и поиска смысла в устоявшемся." },
+      { id: 'lovers',        num: "VI",    name: "Влюблённые",       symbol: "💫", keywords: "выбор · союз · гармония",                astro: "Близнецы, Меркурий",  interpretation: "Влюблённые — это не только про отношения. Это про выбор, который определяет путь. Карта говорит: сейчас важно не просто решить, но выбрать то, что соответствует твоим истинным ценностям." },
+      { id: 'chariot',       num: "VII",   name: "Колесница",        symbol: "🌠", keywords: "победа · контроль · движение",           astro: "Рак, Луна",           interpretation: "Колесница — это победа через дисциплину. Два коня тянут в разные стороны, но возничий держит их вместе силой воли. Это карта тех, кто движется вперёд, управляя внутренними противоречиями." },
+      { id: 'strength',      num: "VIII",  name: "Сила",             symbol: "🦁", keywords: "терпение · смелость · внутренняя сила",  astro: "Лев, Солнце",         interpretation: "Сила — это не агрессия, а мягкое присутствие. Женщина на карте укрощает льва не страхом, а любовью. Это карта внутренней уверенности — когда человек справляется с трудным без насилия над собой или другими." },
+      { id: 'hermit',        num: "IX",    name: "Отшельник",        symbol: "🕯️", keywords: "одиночество · мудрость · поиск",        astro: "Дева, Меркурий",      interpretation: "Отшельник поднялся на вершину не чтобы уйти от мира, а чтобы увидеть его яснее. Это карта уединения ради понимания — время замедлиться, обратиться внутрь и найти свой собственный свет." },
+      { id: 'wheel',         num: "X",     name: "Колесо Фортуны",   symbol: "☸️", keywords: "цикл · судьба · перемены",              astro: "Юпитер",              interpretation: "Колесо всегда в движении. Это карта напоминает: всё меняется — и трудное пройдёт, и хорошее стоит ценить. Важно не то, в какой точке колеса ты сейчас, а как ты к этому относишься." },
+      { id: 'justice',       num: "XI",    name: "Справедливость",   symbol: "⚖️", keywords: "баланс · истина · карма",               astro: "Весы, Венера",        interpretation: "Справедливость не жестокая и не слепая. Она видит всё и взвешивает честно. Это карта причинно-следственных связей: то, что сделано — возвращается. Время смотреть на ситуацию трезво и принять её такой, какая она есть." },
+      { id: 'hanged_man',    num: "XII",   name: "Повешенный",       symbol: "🔄", keywords: "пауза · жертва · перспектива",           astro: "Нептун, вода",        interpretation: "Повешенный висит вниз головой — и улыбается. Он сделал паузу добровольно и видит мир с другой стороны. Это карта продуктивного ожидания: иногда, чтобы двигаться вперёд, нужно сначала остановиться." },
+      { id: 'death',         num: "XIII",  name: "Смерть",           symbol: "🌑", keywords: "трансформация · конец · обновление",     astro: "Скорпион, Плутон",    interpretation: "Карта Смерти редко про физическую смерть — чаще про завершение чего-то, что уже отжило. Это карта трансформации: старое должно уйти, чтобы появилось новое. Сопротивление этому болезненнее, чем само изменение." },
+      { id: 'temperance',    num: "XIV",   name: "Умеренность",      symbol: "🌊", keywords: "равновесие · терпение · цель",           astro: "Стрелец, Юпитер",     interpretation: "Умеренность — это не серость, а искусство смешивать. Ангел переливает воду между кубками, не теряя ни капли. Это карта баланса, терпения и умения находить золотую середину между крайностями." },
+      { id: 'devil',         num: "XV",    name: "Дьявол",           symbol: "⛓️", keywords: "привязанность · материальность · тень", astro: "Козерог, Сатурн",     interpretation: "Дьявол показывает цепи — но они достаточно широки, чтобы их снять. Это карта про то, к чему мы добровольно привязаны: страхи, зависимости, убеждения. Осознание — первый шаг к освобождению." },
+      { id: 'tower',         num: "XVI",   name: "Башня",            symbol: "⚡", keywords: "потрясение · откровение · хаос",         astro: "Марс",                interpretation: "Башня падает — и это хорошо. Она была построена на ложном фундаменте. Это карта внезапного разрушения иллюзий: больно, но честно. После Башни всегда есть шанс построить что-то настоящее." },
+      { id: 'star',          num: "XVII",  name: "Звезда",           symbol: "⭐", keywords: "надежда · вдохновение · исцеление",      astro: "Водолей, Уран",       interpretation: "После бури — тишина и звёздное небо. Звезда — это карта восстановления и надежды. Она говорит: ты на правильном пути, даже если не видишь всей картины. Просто продолжай идти." },
+      { id: 'moon',          num: "XVIII", name: "Луна",             symbol: "🌕", keywords: "иллюзия · страх · подсознание",          astro: "Рыбы, Нептун",        interpretation: "Луна освещает, но не так ярко, как солнце — многое остаётся в тени. Это карта неопределённости, страхов и того, что скрыто. Здесь важно не торопиться с выводами и прислушаться к снам и интуиции." },
+      { id: 'sun',           num: "XIX",   name: "Солнце",           symbol: "☀️", keywords: "радость · успех · витальность",          astro: "Солнце",              interpretation: "Солнце — одна из самых радостных карт колоды. Ребёнок на белом коне, подсолнухи, открытое небо. Это карта витальности, успеха и простой искренней радости. Сейчас — время быть собой без стеснения." },
+      { id: 'judgement',     num: "XX",    name: "Суд",              symbol: "🎺", keywords: "пробуждение · искупление · призыв",      astro: "Плутон",              interpretation: "Суд — это не приговор, а призыв проснуться. Люди поднимаются из гробниц навстречу свету. Это карта второго шанса и переосмысления: что-то в тебе готово к обновлению. Откликнись на зов." },
+      { id: 'world',         num: "XXI",   name: "Мир",              symbol: "🌍", keywords: "завершение · единство · триумф",         astro: "Сатурн",              interpretation: "Мир — финальная карта Старших арканов. Танцующая фигура в венке — символ завершённого цикла и гармонии. Это карта целостности: когда всё встало на свои места и можно позволить себе насладиться достигнутым." },
+    ],
+  },
 ];
 
+// ─── Backward-compatible aliases (используются старым кодом до рефакторинга) ───
+const MAJOR_ARCANA = DECK_CATALOG[0].cards;
 const DECK = {
-  major: MAJOR_ARCANA,
-  getAll() { return [...this.major]; },
+  _activeDeck: DECK_CATALOG[0],
+  getAll() { return [...this._activeDeck.cards]; },
   getRandom(n = 1) { return this.getAll().sort(() => Math.random() - 0.5).slice(0, n); },
 };
 
@@ -660,22 +704,130 @@ const ZODIAC = [
   { sign: 'Козерог',   symbol: '♑', element: 'земля', planet: 'Сатурн',  modality: 'кардинальный', start: [12,22], end: [12,31] },
 ];
 
-const SPREADS = {
-  past: { label: 'Прошлое · Настоящее · Будущее', desc: 'Для вопросов с временно́й динамикой и развитием ситуации', slots: ['Прошлое','Настоящее','Будущее'], hint: '<strong>Подходящие вопросы:</strong> «Что привело меня к нынешней ситуации?», «Как развиваются мои отношения / карьера / здоровье?», «Куда движется эта история?»', placeholder: 'например: Как развивается моя карьера?', slotMeaning: ['корни ситуации — что из прошлого опыта, решений или обстоятельств привело к нынешнему моменту','текущая реальность — что происходит прямо сейчас, какие силы действуют в данный момент','вектор развития — куда движется ситуация, если всё останется как есть'], interplay: 'Покажи как прошлое породило настоящее, и как настоящее формирует будущее — это должна быть единая нить.' },
-  situation: { label: 'Ситуация · Совет · Исход', desc: 'Для конкретного вопроса, требующего решения или выбора', slots: ['Ситуация','Совет','Исход'], hint: '<strong>Подходящие вопросы:</strong> «Стоит ли мне менять работу?», «Как поступить с этим конфликтом?», «Принять ли это предложение?»', placeholder: 'например: Стоит ли мне переехать в другой город?', slotMeaning: ['суть происходящего — что на самом деле стоит за вопросом, скрытые факторы и динамика ситуации','конкретное действие или подход — что именно стоит сделать, изменить в себе или в поведении','наиболее вероятный результат — что произойдёт если последовать совету'], interplay: 'Покажи логическую связь: почему именно этот совет подходит к этой ситуации, и как он приведёт к этому исходу.' },
-  mind: { label: 'Разум · Тело · Дух', desc: 'Для самопознания и понимания своего внутреннего состояния', slots: ['Разум','Тело','Дух'], hint: '<strong>Подходящие вопросы:</strong> «Как я себя чувствую прямо сейчас?», «Что происходит на трёх уровнях моей жизни?», «Где мне нужно уделить больше внимания?»', placeholder: 'например: Что мне нужно сейчас для гармонии?', slotMeaning: ['ментальный план — мысли, убеждения, страхи или ожидания которые сейчас доминируют','физический и эмоциональный план — как состояние проявляется в теле, энергии и чувствах','глубинный уровень — что происходит с ценностями, смыслами и внутренним компасом'], interplay: 'Покажи где эти три уровня согласованы, а где между ними есть напряжение — и что это говорит о человеке.' },
-};
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA — SPREAD CATALOG
+// ═══════════════════════════════════════════════════════════════════════════════
+const SPREAD_CATALOG = [
+  // ─── КАТЕГОРИЯ: МОЙ ДЕНЬ ────────────────────────────────────────────────────
+  {
+    id: 'card_of_day',
+    name: 'Карта дня',
+    description: 'Одна карта — послание и энергия на сегодня',
+    category: 'day',
+    askQuestion: false,
+    dailyLimit: true,
+    rateLimitType: 'daily',
+    maxTokens: 350,
+    interplay: null,
+    responseFormat: { type: 'day' },
+    phases: [
+      {
+        slots: [
+          { name: 'Карта дня', meaning: 'энергия и послание на сегодняшний день — один конкретный совет или фокус внимания' },
+        ],
+      },
+    ],
+    fallbackReadings: {
+      "Шут":             "Сегодня вселенная приглашает тебя сделать шаг в неизвестность с лёгким сердцем. Не просчитывай каждый ход — позволь себе удивиться. Иногда лучшие истории начинаются там, где кончаются карты.",
+      "Маг":             "Сегодня все нужные инструменты уже у тебя в руках. Не жди подходящего момента — ты сам создаёшь его прямо сейчас. Действуй с намерением, и задуманное воплотится.",
+      "Верховная Жрица": "День просит тебя остановиться и прислушаться. Ответ, который ты ищешь, живёт не в чужих словах, а в твоём тихом внутреннем знании. Доверяй интуиции.",
+      "Императрица":     "Сегодня благоприятный день для всего, что связано с созданием и заботой. Позволь себе насладиться красотой вокруг. Плоды твоих усилий уже начинают созревать.",
+      "Мир":             "Ты стоишь на пороге завершения важного цикла. Оглянись и оцени, как далеко ты прошёл. Сегодня есть смысл отмечать даже маленькие победы.",
+      "Солнце":          "День наполнен светлой энергией и чистой радостью. Делай то, что тебе по-настоящему нравится — сегодня это приносит особые плоды. Улыбнись и позволь себе блистать.",
+      "Луна":            "Сегодня что-то может казаться туманным или двойственным. Не торопись с выводами — позволь ситуации проясниться. Ночные страхи растворяются с рассветом.",
+      "Звезда":          "После трудного периода появляется свет надежды. Сегодня самое время вернуть веру в себя и в доброту мира. Твоя мечта не забыла о тебе.",
+    },
+  },
 
-const DEMO_READINGS = {
-  "Шут": "Сегодня вселенная приглашает тебя сделать шаг в неизвестность с лёгким сердцем. Не просчитывай каждый ход — позволь себе удивиться. Иногда лучшие истории начинаются там, где кончаются карты.",
-  "Маг": "Сегодня все нужные инструменты уже у тебя в руках. Не жди подходящего момента — ты сам создаёшь его прямо сейчас. Действуй с намерением, и задуманное воплотится.",
-  "Верховная Жрица": "День просит тебя остановиться и прислушаться. Ответ, который ты ищешь, живёт не в чужих словах, а в твоём тихом внутреннем знании. Доверяй интуиции.",
-  "Императрица": "Сегодня благоприятный день для всего, что связано с созданием и заботой. Позволь себе насладиться красотой вокруг. Плоды твоих усилий уже начинают созревать.",
-  "Мир": "Ты стоишь на пороге завершения важного цикла. Оглянись и оцени, как далеко ты прошёл. Сегодня есть смысл отмечать даже маленькие победы.",
-  "Солнце": "День наполнен светлой энергией и чистой радостью. Делай то, что тебе по-настоящему нравится — сегодня это приносит особые плоды. Улыбнись и позволь себе блистать.",
-  "Луна": "Сегодня что-то может казаться туманным или двойственным. Не торопись с выводами — позволь ситуации проясниться. Ночные страхи растворяются с рассветом.",
-  "Звезда": "После трудного периода появляется свет надежды. Сегодня самое время вернуть веру в себя и в доброту мира. Твоя мечта не забыла о тебе.",
-};
+  // ─── КАТЕГОРИЯ: МОИ РАСКЛАДЫ ────────────────────────────────────────────────
+  {
+    id: 'past_present_future',
+    name: 'Прошлое · Настоящее · Будущее',
+    description: 'Для вопросов с временно́й динамикой и развитием ситуации',
+    category: 'spread',
+    askQuestion: true,
+    questionHint: '<strong>Подходящие вопросы:</strong> «Что привело меня к нынешней ситуации?», «Как развиваются мои отношения / карьера / здоровье?», «Куда движется эта история?»',
+    questionPlaceholder: 'например: Как развивается моя карьера?',
+    dailyLimit: false,
+    rateLimitType: 'spread',
+    maxTokens: 650,
+    interplay: 'Покажи как прошлое породило настоящее, и как настоящее формирует будущее — это должна быть единая нить.',
+    responseFormat: { type: 'spread' },
+    phases: [
+      {
+        slots: [
+          { name: 'Прошлое',    meaning: 'корни ситуации — что из прошлого опыта, решений или обстоятельств привело к нынешнему моменту' },
+          { name: 'Настоящее', meaning: 'текущая реальность — что происходит прямо сейчас, какие силы действуют в данный момент' },
+          { name: 'Будущее',   meaning: 'вектор развития — куда движется ситуация, если всё останется как есть' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'situation_advice_outcome',
+    name: 'Ситуация · Совет · Исход',
+    description: 'Для конкретного вопроса, требующего решения или выбора',
+    category: 'spread',
+    askQuestion: true,
+    questionHint: '<strong>Подходящие вопросы:</strong> «Стоит ли мне менять работу?», «Как поступить с этим конфликтом?», «Принять ли это предложение?»',
+    questionPlaceholder: 'например: Стоит ли мне переехать в другой город?',
+    dailyLimit: false,
+    rateLimitType: 'spread',
+    maxTokens: 650,
+    interplay: 'Покажи логическую связь: почему именно этот совет подходит к этой ситуации, и как он приведёт к этому исходу.',
+    responseFormat: { type: 'spread' },
+    phases: [
+      {
+        slots: [
+          { name: 'Ситуация', meaning: 'суть происходящего — что на самом деле стоит за вопросом, скрытые факторы и динамика ситуации' },
+          { name: 'Совет',    meaning: 'конкретное действие или подход — что именно стоит сделать, изменить в себе или в поведении' },
+          { name: 'Исход',    meaning: 'наиболее вероятный результат — что произойдёт если последовать совету' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'mind_body_spirit',
+    name: 'Разум · Тело · Дух',
+    description: 'Для самопознания и понимания своего внутреннего состояния',
+    category: 'spread',
+    askQuestion: true,
+    questionHint: '<strong>Подходящие вопросы:</strong> «Как я себя чувствую прямо сейчас?», «Что происходит на трёх уровнях моей жизни?», «Где мне нужно уделить больше внимания?»',
+    questionPlaceholder: 'например: Что мне нужно сейчас для гармонии?',
+    dailyLimit: false,
+    rateLimitType: 'spread',
+    maxTokens: 650,
+    interplay: 'Покажи где эти три уровня согласованы, а где между ними есть напряжение — и что это говорит о человеке.',
+    responseFormat: { type: 'spread' },
+    phases: [
+      {
+        slots: [
+          { name: 'Разум', meaning: 'ментальный план — мысли, убеждения, страхи или ожидания которые сейчас доминируют' },
+          { name: 'Тело',  meaning: 'физический и эмоциональный план — как состояние проявляется в теле, энергии и чувствах' },
+          { name: 'Дух',   meaning: 'глубинный уровень — что происходит с ценностями, смыслами и внутренним компасом' },
+        ],
+      },
+    ],
+  },
+];
+
+// ─── Backward-compatible aliases (используются старым кодом до рефакторинга) ───
+const SPREADS = Object.fromEntries(
+  SPREAD_CATALOG.filter(s => s.category === 'spread').map(s => {
+    const allSlots = s.phases.flatMap(p => p.slots);
+    return [s.id === 'past_present_future' ? 'past' : s.id === 'situation_advice_outcome' ? 'situation' : 'mind', {
+      label: s.name,
+      desc: s.description,
+      slots: allSlots.map(sl => sl.name),
+      hint: s.questionHint || '',
+      placeholder: s.questionPlaceholder || '',
+      slotMeaning: allSlots.map(sl => sl.meaning),
+      interplay: s.interplay,
+    }];
+  })
+);
+
+const DEMO_READINGS = SPREAD_CATALOG.find(s => s.id === 'card_of_day').fallbackReadings;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PROFILE
@@ -785,6 +937,66 @@ const Profile = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// DECK STORE — активная колода
+// ═══════════════════════════════════════════════════════════════════════════════
+const DeckStore = {
+  _storageKey: 'tarot_active_deck',
+  _activeDeckId: null,
+
+  get() {
+    if (!this._activeDeckId) {
+      this._activeDeckId = Store.get(this._storageKey) || DECK_CATALOG[0].id;
+    }
+    return DECK_CATALOG.find(d => d.id === this._activeDeckId) || DECK_CATALOG[0];
+  },
+
+  set(deckId, { persist = true } = {}) {
+    const deck = DECK_CATALOG.find(d => d.id === deckId);
+    if (!deck) { log('warn', 'DeckStore.set: unknown deck id', deckId); return; }
+    this._activeDeckId = deckId;
+    if (persist) Store.set(this._storageKey, deckId);
+    DECK._activeDeck = deck;
+    Events.emit('deck:changed', deck);
+    log('log', 'Active deck:', deck.name);
+  },
+
+  async saveToCloud(deckId) {
+    const uid = window._uid;
+    if (!uid) return;
+    try {
+      await window.db.collection('users').doc(uid).set({ activeDeckId: deckId }, { merge: true });
+    } catch(e) {
+      log('warn', 'DeckStore.saveToCloud failed:', e.message);
+    }
+  },
+
+  async loadFromCloud() {
+    const uid = window._uid;
+    if (!uid) return;
+    try {
+      const snap = await window.db.collection('users').doc(uid).get();
+      if (snap.exists && snap.data().activeDeckId) {
+        this.set(snap.data().activeDeckId, { persist: true });
+      }
+    } catch(e) {
+      log('warn', 'DeckStore.loadFromCloud failed:', e.message);
+    }
+  },
+
+  getRandom(n = 1) {
+    const deck = this.get();
+    const cards = [...deck.cards].sort(() => Math.random() - 0.5).slice(0, n);
+    return cards.map(card => ({
+      card,
+      isReversed: deck.reversible ? Math.random() < CONFIG.reversedProbability : false,
+    }));
+  },
+};
+
+// Инициализируем DECK alias при старте
+DeckStore.set(DeckStore.get().id, { persist: false });
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // API
 // ═══════════════════════════════════════════════════════════════════════════════
 const API = {
@@ -821,17 +1033,97 @@ const API = {
     }
   },
 
+  // ─── Универсальный промпт-билдер ────────────────────────────────────────────
+  // drawnCards: [{ card, isReversed }] — все карты текущей фазы (и предыдущих)
+  // spreadDef:  объект из SPREAD_CATALOG
+  // opts.question:      строка вопроса пользователя (опционально)
+  // opts.phaseIndex:    индекс текущей фазы (0-based, default 0)
+  // opts.prevReading:   текст предыдущей фазы для многофазных раскладов
+  buildPrompt(drawnCards, spreadDef, opts = {}) {
+    const { question = '', phaseIndex = 0, prevReading = '' } = opts;
+    const deck = DeckStore.get();
+
+    // ── Общий стиль (tone of voice) ──────────────────────────────────────────
+    const TONE = 'Стиль: поэтичный но понятный, как хороший гороскоп. Пиши так, чтобы человек без знания астрологии всё понял с первого прочтения. Никакого эзотерического жаргона — не используй слова вроде «фиксированный знак», «водная стихия», «трансформативная энергия», «вибрации». Вместо этого переводи астрологические смыслы на язык чувств и повседневных ситуаций.';
+
+    // ── Контекст пользователя и колоды ───────────────────────────────────────
+    const profileCtx = Profile.buildContext();
+    const deckHint = deck.aiHint ? '\nКолода: ' + deck.aiHint : '';
+
+    // ── Все слоты до текущей фазы включительно ────────────────────────────────
+    const allSlots = spreadDef.phases.slice(0, phaseIndex + 1).flatMap(p => p.slots);
+
+    // ── Карты ─────────────────────────────────────────────────────────────────
+    const cardLines = drawnCards.map(({ card, isReversed }, i) => {
+      const slot = allSlots[i];
+      const slotLabel = slot ? slot.name + ': ' : '';
+      const revLabel = isReversed ? ' (перевёрнутая)' : '';
+      const astroNote = card.astro ? ' (' + card.astro + ')' : '';
+      return slotLabel + '«' + card.name + '»' + revLabel + ' — ' + card.keywords + astroNote;
+    }).join('\n');
+
+    // ── Описание позиций ──────────────────────────────────────────────────────
+    const slotDesc = allSlots.map(s => '- ' + s.name + ': ' + s.meaning).join('\n');
+
+    // ── Вопрос ────────────────────────────────────────────────────────────────
+    const questionLine = spreadDef.askQuestion
+      ? (question ? 'Вопрос: «' + question + '»' : 'Вопрос не задан — дай общее предсказание.')
+      : '';
+
+    // ── Контекст предыдущей фазы ──────────────────────────────────────────────
+    const prevCtx = prevReading
+      ? '\n\nПредыдущая интерпретация (дополни и углуби её новой картой):\n' + prevReading
+      : '';
+
+    // ── Interplay (только когда все карты расклада открыты) ───────────────────
+    const totalCards = spreadDef.phases.reduce((s, p) => s + p.slots.length, 0);
+    const interplayLine = (spreadDef.interplay && drawnCards.length === totalCards)
+      ? '\nСвязь между картами: ' + spreadDef.interplay
+      : '';
+
+    // ── aiHint расклада (если есть) ───────────────────────────────────────────
+    const spreadHint = spreadDef.aiHint ? '\n' + spreadDef.aiHint : '';
+
+    // ── Формат ответа ─────────────────────────────────────────────────────────
+    const fmt = spreadDef.responseFormat.type;
+    let formatBlock;
+    if (fmt === 'day') {
+      formatBlock = 'Формат ответа:\n1. «reading» — 3 предложения. Тёплое, конкретное послание на сегодня. Одна мысль, один совет — без перечислений.\n2. «reflection» — 1 вопрос для саморефлексии. Короткий, личный, неочевидный.\n3. Имя — максимум раз. Не упоминай слово «таро».\n4. Строго JSON:\n{"reading": "...", "reflection": "..."}';
+    } else {
+      const isLastPhase = phaseIndex === spreadDef.phases.length - 1;
+      const slotsJson = allSlots.map(s => '{"slot":"' + s.name + '","text":"..."}').join(',');
+      const summaryField = isLastPhase ? ',"summary":"..."' : '';
+      formatBlock = 'Формат:\n1. Для каждой позиции — 2-3 предложения. Конкретно, по существу. Привяжи карту к вопросу и позиции, а не описывай её абстрактно.\n' + (isLastPhase && spreadDef.interplay ? '2. Общий вывод — 2-3 предложения: ' + spreadDef.interplay + '\n' : '') + '3. Имя — максимум раз. Не упоминай слово «таро».\n4. Строго JSON:\n{"cards":[' + slotsJson + ']' + summaryField + '}';
+    }
+
+    // ── Сборка ────────────────────────────────────────────────────────────────
+    const parts = [
+      'Ты — таролог-астролог.' + profileCtx + deckHint,
+      spreadDef.category === 'day'
+        ? 'Карта дня: ' + cardLines
+        : 'Расклад: «' + spreadDef.name + '»\n' + (questionLine ? questionLine + '\n' : '') + '\nПозиции:\n' + slotDesc + '\n\nКарты:\n' + cardLines,
+      spreadHint,
+      prevCtx,
+      interplayLine,
+      TONE,
+      formatBlock,
+    ].filter(Boolean);
+
+    return parts.join('\n\n');
+  },
+
+  // ─── Backward-compatible алиасы ──────────────────────────────────────────────
   buildDayPrompt(card, isReversed) {
-    const birthCtx = Profile.buildContext();
-    const astroNote = card.astro ? ' Астрологическое соответствие карты: ' + card.astro + '.' : '';
-    return 'Ты — таролог-астролог. Карта дня: "' + card.name + '"' + (isReversed ? ' (перевёрнутая)' : '') + '. Ключевые слова: ' + card.keywords + '.' + astroNote + birthCtx + '\n\nСтиль: поэтичный но понятный, как хороший гороскоп. Пиши так, чтобы человек без знания астрологии всё понял с первого прочтения. Никакого эзотерического жаргона — не используй слова вроде «фиксированный знак», «водная стихия», «трансформативная энергия», «вибрации». Вместо этого переводи астрологические смыслы на язык чувств и повседневных ситуаций.\n\nФормат ответа:\n1. «reading» — 3 предложения. Тёплое, конкретное послание на сегодня. Одна мысль, один совет — без перечислений.\n2. «reflection» — 1 вопрос для саморефлексии. Короткий, личный, неочевидный.\n3. Имя — максимум раз. Не упоминай слово «таро».\n4. Строго JSON:\n{"reading": "...", "reflection": "..."}';
+    const spreadDef = SPREAD_CATALOG.find(s => s.id === 'card_of_day');
+    return this.buildPrompt([{ card, isReversed }], spreadDef);
   },
 
   buildSpreadPrompt(drawnCards, spread, question) {
-    const cardLines = drawnCards.map(({card,isReversed},i) => spread.slots[i]+': «'+card.name+'»'+(isReversed?' (перевёрнутая)':'')+' — '+card.keywords+(card.astro?' ('+card.astro+')':'')).join('\n');
-    const questionLine = question ? 'Вопрос: «'+question+'»' : 'Вопрос не задан — дай общее предсказание.';
-    const slotDesc = spread.slotMeaning.map((m,i) => '- '+spread.slots[i]+': '+m).join('\n');
-    return 'Ты — таролог-астролог.'+Profile.buildContext()+'\n\nРасклад: «'+spread.label+'»\n'+questionLine+'\n\nПозиции:\n'+slotDesc+'\n\nКарты:\n'+cardLines+'\n\nСтиль: поэтичный но понятный, как хороший гороскоп. Человек без знания астрологии должен всё понять с первого прочтения. Никакого эзотерического жаргона — не используй «фиксированный знак», «водная стихия», «трансформативная энергия», «вибрации». Переводи астрологические смыслы на язык чувств и повседневных ситуаций.\n\nФормат:\n1. Для каждой позиции — 2-3 предложения. Конкретно, по существу. Привяжи карту к вопросу и позиции, а не описывай её абстрактно.\n2. Общий вывод — 2-3 предложения: '+spread.interplay+'\n3. Имя — максимум раз. Не упоминай слово «таро».\n4. Строго JSON:\n{"cards":[{"slot":"'+spread.slots[0]+'","text":"..."},{"slot":"'+spread.slots[1]+'","text":"..."},{"slot":"'+spread.slots[2]+'","text":"..."}],"summary":"..."}';
+    // spread здесь — старый формат из SPREADS алиаса, маппим на spreadDef
+    const idMap = { past: 'past_present_future', situation: 'situation_advice_outcome', mind: 'mind_body_spirit' };
+    const spreadId = Object.keys(idMap).find(k => SPREADS[k] === spread);
+    const spreadDef = SPREAD_CATALOG.find(s => s.id === (idMap[spreadId] || '')) || SPREAD_CATALOG[1];
+    return this.buildPrompt(drawnCards, spreadDef, { question });
   },
 };
 
@@ -879,185 +1171,456 @@ const History = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CARD OF DAY
+// SPREAD ENGINE — универсальная машина выполнения раскладов
+// Заменяет CardOfDay и Spread. Работает с любым spreadDef из SPREAD_CATALOG.
 // ═══════════════════════════════════════════════════════════════════════════════
-const CardOfDay = {
+const SpreadEngine = {
+  // ─── Стейт сессии ────────────────────────────────────────────────────────────
+  _spreadDef: null,      // текущий расклад
+  _drawnCards: [],       // все вытянутые карты (накапливаются по фазам)
+  _phaseIndex: 0,        // текущая фаза
+  _prevReading: '',      // текст предыдущей фазы для AI
+  _question: '',         // вопрос пользователя
   _isDrawing: false,
-  localDateStr() { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
-  todayKey() { return CONFIG.storageKeys.dayPrefix + this.localDateStr(); },
+  _aiEnabled: true,      // AI интерпретация вкл/выкл
 
-  async restore() {
-    let saved = Store.get(this.todayKey());
+  // ─── Утилиты ─────────────────────────────────────────────────────────────────
+  localDateStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  },
+  todayKey(spreadId) { return CONFIG.storageKeys.dayPrefix + spreadId + '_' + this.localDateStr(); },
+
+  // ─── JSON парсинг ответа API ─────────────────────────────────────────────────
+  _parseRaw(raw, fmt) {
+    if (!raw) return null;
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const patterns = fmt === 'day'
+      ? [clean, ...[raw.match(/\{[\s\S]*"reading"[\s\S]*\}/)?.[0]]]
+      : [clean, ...[raw.match(/\{[\s\S]*"cards"[\s\S]*\}/)?.[0]]];
+    for (const s of patterns) {
+      if (!s) continue;
+      try {
+        const p = JSON.parse(s);
+        if (fmt === 'day' && p.reading && p.reading !== '...') return p;
+        if (fmt !== 'day' && Array.isArray(p.cards)) return p;
+      } catch(e) {}
+    }
+    // plain text fallback для карты дня
+    if (fmt === 'day' && raw.length < 1000 && !raw.includes('Инструкция') && !raw.includes('JSON')) {
+      return { reading: raw, reflection: '' };
+    }
+    return null;
+  },
+
+  // ─── Запустить расклад ───────────────────────────────────────────────────────
+  async startSpread(spreadDef, { question = '', aiEnabled = true } = {}) {
+    if (this._isDrawing) return;
+
+    // Проверка dailyLimit
+    if (spreadDef.dailyLimit && Store.get(this.todayKey(spreadDef.id))) {
+      await this._restoreDay(spreadDef);
+      return;
+    }
+
+    this._spreadDef = spreadDef;
+    this._drawnCards = [];
+    this._phaseIndex = 0;
+    this._prevReading = '';
+    this._question = question;
+    this._aiEnabled = aiEnabled;
+
+    await this._runPhase();
+  },
+
+  // ─── Выполнить текущую фазу ──────────────────────────────────────────────────
+  async _runPhase() {
+    this._isDrawing = true;
+    const spreadDef = this._spreadDef;
+    const phase = spreadDef.phases[this._phaseIndex];
+    const isDay = spreadDef.category === 'day';
+
+    // Вытягиваем карты фазы
+    const newCards = DeckStore.getRandom(phase.slots.length);
+    this._drawnCards.push(...newCards);
+
+    if (isDay) {
+      await this._renderDayPhase(newCards[0]);
+    } else {
+      await this._renderSpreadPhase();
+    }
+  },
+
+  // ─── Рендер карты дня ────────────────────────────────────────────────────────
+  async _renderDayPhase({ card, isReversed }) {
+    const spreadDef = this._spreadDef;
+    DOM.arcanaLabel.textContent = 'Старший аркан · ' + (card.num || '');
+    DOM.cardSymbol.textContent = card.symbol;
+    DOM.cardName.textContent = card.name + (isReversed ? ' (перевёрнутая)' : '');
+    DOM.cardKeywords.textContent = card.keywords;
+    DOM.cardInner.classList.add('flipped');
+    DOM.readingArea.style.display = 'block';
+
+    if (!this._aiEnabled) {
+      // Без AI — показываем interpretation из колоды
+      DOM.readingText.className = 'reading-text';
+      DOM.readingText.textContent = card.interpretation || card.keywords;
+      DOM.reflectionBox.style.display = 'none';
+      this._finishDay(card, isReversed, card.interpretation || '', '');
+      return;
+    }
+
+    DOM.readingText.className = 'reading-text loading';
+    DOM.readingText.innerHTML = 'Читаю послание карты<span class="cursor"></span>';
+
+    await sleep(CONFIG.cardFlipDelay);
+
+    const prompt = API.buildPrompt([{ card, isReversed }], spreadDef);
+    const raw = await API.call({ prompt, maxTokens: spreadDef.maxTokens, type: spreadDef.rateLimitType });
+    const parsed = this._parseRaw(raw, 'day');
+
+    let reading = parsed?.reading || '';
+    const reflection = parsed?.reflection || '';
+
+    if (!reading) {
+      const fallbacks = spreadDef.fallbackReadings || {};
+      reading = fallbacks[card.name] || 'Карта «' + card.name + '» несёт в себе энергию: ' + card.keywords + '. Сегодня обрати внимание на то, где эти качества проявляются в твоей жизни.';
+      if (isReversed) reading += ' Сегодня эта энергия обращена внутрь — самое время для честного внутреннего диалога.';
+      DOM.readingText.className = 'reading-text';
+      DOM.readingText.textContent = reading;
+    } else {
+      DOM.readingText.className = 'reading-text';
+      await UI.typeText(DOM.readingText, reading);
+    }
+
+    if (reflection) {
+      DOM.reflectionBox.style.display = 'block';
+      DOM.reflectionText.textContent = reflection;
+    } else {
+      DOM.reflectionBox.style.display = 'none';
+    }
+
+    this._finishDay(card, isReversed, reading, reflection);
+  },
+
+  _finishDay(card, isReversed, reading, reflection) {
+    const spreadDef = this._spreadDef;
+    this._isDrawing = false;
+    const todayData = { cardName: card.name, isReversed, reading, reflection };
+    Store.set(this.todayKey(spreadDef.id), todayData);
+    if (window._uid) {
+      window.db.collection('users').doc(window._uid).collection('daily').doc(this.localDateStr())
+        .set(todayData).catch(e => log('warn', 'Daily save error:', e.message));
+    }
+    this._setDayDrawnState();
+    History.save({ spreadId: spreadDef.id, date: new Date().toLocaleDateString('ru-RU', { day:'numeric', month:'short' }), name: card.name + (isReversed ? ' ↩' : ''), symbol: card.symbol, ts: Date.now() });
+    History.render();
+    Events.emit('card:drawn', { card, isReversed });
+  },
+
+  _setDayDrawnState() {
+    DOM.drawBtn.disabled = true;
+    DOM.drawBtn.innerHTML = '<span>🌙</span><span>Новая карта — завтра</span>';
+    DOM.drawBtn.style.opacity = '0.45';
+    DOM.drawBtn.style.cursor = 'default';
+  },
+
+  // ─── Восстановить карту дня ──────────────────────────────────────────────────
+  async _restoreDay(spreadDef) {
+    let saved = Store.get(this.todayKey(spreadDef.id));
+    // Пробуем legacy ключ (старый формат до рефакторинга)
+    if (!saved) saved = Store.get(CONFIG.storageKeys.dayPrefix + this.localDateStr());
     if (!saved && window._uid) {
-      try { const snap = await window.db.collection('users').doc(window._uid).collection('daily').doc(this.localDateStr()).get(); if (snap.exists) { saved = snap.data(); Store.set(this.todayKey(), saved); } } catch(e) {}
+      try {
+        const snap = await window.db.collection('users').doc(window._uid)
+          .collection('daily').doc(this.localDateStr()).get();
+        if (snap.exists) { saved = snap.data(); Store.set(this.todayKey(spreadDef.id), saved); }
+      } catch(e) {}
     }
     if (!saved) return false;
-    const card = MAJOR_ARCANA.find(c => c.name === saved.cardName);
+    const deck = DeckStore.get();
+    const card = deck.cards.find(c => c.name === saved.cardName) || MAJOR_ARCANA.find(c => c.name === saved.cardName);
     if (!card) return false;
-    DOM.arcanaLabel.textContent = 'Старший аркан · ' + card.num;
+    DOM.arcanaLabel.textContent = 'Старший аркан · ' + (card.num || '');
     DOM.cardSymbol.textContent = card.symbol;
     DOM.cardName.textContent = card.name + (saved.isReversed ? ' (перевёрнутая)' : '');
     DOM.cardKeywords.textContent = card.keywords;
-    DOM.cardInner.style.transition = 'none'; DOM.cardInner.classList.add('flipped');
+    DOM.cardInner.style.transition = 'none';
+    DOM.cardInner.classList.add('flipped');
     requestAnimationFrame(() => { DOM.cardInner.style.transition = ''; });
     if (DOM.tabDay.classList.contains('active')) DOM.readingArea.style.display = 'block';
-    DOM.readingText.className = 'reading-text'; DOM.readingText.textContent = saved.reading;
+    DOM.readingText.className = 'reading-text';
+    DOM.readingText.textContent = saved.reading;
     if (saved.reflection) {
       DOM.reflectionBox.style.display = 'block';
       DOM.reflectionText.textContent = saved.reflection;
     } else {
       DOM.reflectionBox.style.display = 'none';
     }
-    this.setDrawnState();
+    this._setDayDrawnState();
     return true;
   },
 
-  setDrawnState() { DOM.drawBtn.disabled = true; DOM.drawBtn.innerHTML = '<span>🌙</span><span>Новая карта — завтра</span>'; DOM.drawBtn.style.opacity = '0.45'; DOM.drawBtn.style.cursor = 'default'; },
-
-  async draw() {
-    if (this._isDrawing || Store.get(this.todayKey())) return;
-    this._isDrawing = true; DOM.drawBtn.disabled = true;
-    const card = DECK.getRandom(1)[0];
-    const isReversed = Math.random() < CONFIG.reversedProbability;
-    DOM.arcanaLabel.textContent = 'Старший аркан · ' + card.num;
-    DOM.cardSymbol.textContent = card.symbol;
-    DOM.cardName.textContent = card.name + (isReversed ? ' (перевёрнутая)' : '');
-    DOM.cardKeywords.textContent = card.keywords;
-    DOM.cardInner.classList.add('flipped');
-    DOM.readingArea.style.display = 'block';
-    DOM.readingText.className = 'reading-text loading';
-    DOM.readingText.innerHTML = 'Читаю послание карты<span class="cursor"></span>';
-
-    setTimeout(async () => {
-      const prompt = API.buildDayPrompt(card, isReversed);
-      const raw = await API.call({ prompt, maxTokens: CONFIG.apiMaxTokensDay, type: 'day' });
-      let reading = '';
-      let reflection = '';
-      if (raw) {
-        try {
-          // try direct JSON parse first
-          const clean = raw.replace(/```json|```/g, '').trim();
-          const parsed = JSON.parse(clean);
-          reading = (parsed.reading && parsed.reading !== '...') ? parsed.reading : '';
-          reflection = (parsed.reflection && parsed.reflection !== '...') ? parsed.reflection : '';
-        } catch(e) {
-          // try extracting JSON from mixed text (Claude sometimes adds preamble)
-          const jsonMatch = raw.match(/\{[\s\S]*"reading"[\s\S]*\}/);
-          if (jsonMatch) {
-            try {
-              const parsed = JSON.parse(jsonMatch[0]);
-              reading = (parsed.reading && parsed.reading !== '...') ? parsed.reading : '';
-              reflection = (parsed.reflection && parsed.reflection !== '...') ? parsed.reflection : '';
-            } catch(e2) {}
-          }
-          // if still no reading, treat as plain text ONLY if it doesn't look like a prompt
-          if (!reading && raw.length < 1000 && !raw.includes('Инструкция') && !raw.includes('JSON')) {
-            reading = raw;
-          }
-        }
-      }
-      if (!reading) {
-        reading = DEMO_READINGS[card.name] || 'Карта «'+card.name+'» несёт в себе энергию: '+card.keywords+'. Сегодня обрати внимание на то, где эти качества проявляются в твоей жизни. Используй их как компас.';
-        if (isReversed) reading += ' Сегодня эта энергия обращена внутрь — самое время для честного внутреннего диалога.';
-        DOM.readingText.className = 'reading-text'; DOM.readingText.textContent = reading;
-      } else {
-        DOM.readingText.className = 'reading-text'; await UI.typeText(DOM.readingText, reading);
-      }
-      if (reflection) {
-        DOM.reflectionBox.style.display = 'block';
-        DOM.reflectionText.textContent = reflection;
-      }
-      this._isDrawing = false;
-      const todayData = { cardName: card.name, isReversed, reading, reflection };
-      Store.set(this.todayKey(), todayData);
-      if (window._uid) window.db.collection('users').doc(window._uid).collection('daily').doc(this.localDateStr()).set(todayData).catch(e => log('warn', 'Daily card save error:', e.message));
-      this.setDrawnState();
-      History.save({ type: 'day', date: new Date().toLocaleDateString('ru-RU', { day:'numeric', month:'short' }), name: card.name + (isReversed ? ' ↩' : ''), symbol: card.symbol, ts: Date.now() });
-      History.render();
-      Events.emit('card:drawn', { card, isReversed });
-    }, CONFIG.cardFlipDelay);
-  },
-
-  reset() {
-    Store.remove(this.todayKey());
-    DOM.cardInner.style.transition = 'none'; DOM.cardInner.classList.remove('flipped');
+  // ─── Сброс карты дня ─────────────────────────────────────────────────────────
+  resetDay() {
+    const spreadDef = SPREAD_CATALOG.find(s => s.id === 'card_of_day');
+    Store.remove(this.todayKey(spreadDef.id));
+    Store.remove(CONFIG.storageKeys.dayPrefix + this.localDateStr()); // legacy ключ
+    DOM.cardInner.style.transition = 'none';
+    DOM.cardInner.classList.remove('flipped');
     requestAnimationFrame(() => { DOM.cardInner.style.transition = ''; });
     DOM.readingArea.style.display = 'none';
     DOM.reflectionBox.style.display = 'none';
-    DOM.drawBtn.disabled = false; DOM.drawBtn.style.opacity = ''; DOM.drawBtn.style.cursor = '';
+    DOM.drawBtn.disabled = false;
+    DOM.drawBtn.style.opacity = '';
+    DOM.drawBtn.style.cursor = '';
     DOM.drawBtn.innerHTML = '<span>✦</span><span>Вытянуть карту</span>';
     DOM.resetMsg.style.display = 'inline';
     setTimeout(() => { DOM.resetMsg.style.display = 'none'; }, 3000);
   },
-};
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SPREAD
-// ═══════════════════════════════════════════════════════════════════════════════
-const Spread = {
-  _current: 'past', _isDrawing: false, _cards: [],
+  // ─── Рендер фазы расклада ────────────────────────────────────────────────────
+  async _renderSpreadPhase() {
+    const spreadDef = this._spreadDef;
+    const allSlots = spreadDef.phases.slice(0, this._phaseIndex + 1).flatMap(p => p.slots);
+    const totalDrawn = this._drawnCards.length;
 
-  select(type) {
-    this._current = type;
-    const s = SPREADS[type];
-    DOM.spreadDropdownTitle.textContent = s.label; DOM.spreadDropdownDesc.textContent = s.desc;
-    Object.keys(SPREADS).forEach(k => { const el = document.getElementById('spreadOpt_'+k); el.classList.toggle('selected', k===type); el.setAttribute('aria-selected', k===type?'true':'false'); });
-    this.closeDropdown(); this.updateHint(); this.resetUI();
-  },
-  updateHint() { const s = SPREADS[this._current]; DOM.spreadHint.innerHTML = s.hint; DOM.spreadQuestion.placeholder = s.placeholder; },
-  toggleDropdown() { const o = DOM.spreadDropdownMenu.classList.contains('open'); DOM.spreadDropdownMenu.classList.toggle('open',!o); DOM.spreadDropdownBtn.classList.toggle('open',!o); },
-  closeDropdown() { DOM.spreadDropdownMenu.classList.remove('open'); DOM.spreadDropdownBtn.classList.remove('open'); },
-  resetUI() { DOM.spreadCardsRow.style.display = 'none'; DOM.spreadReadingBox.style.display = 'none'; DOM.spreadDrawBtn.disabled = false; DOM.spreadDrawBtn.style.opacity = ''; DOM.spreadDrawBtn.style.cursor = ''; DOM.spreadDrawBtn.innerHTML = '<span>✦</span><span>Разложить карты</span>'; DOM.spreadDrawBtn.setAttribute('data-action','draw-spread'); this._cards = []; },
+    // Строим карточки динамически если нужно
+    this._ensureSpreadCardSlots(allSlots.length);
 
-  async draw() {
-    if (this._isDrawing) return;
-    this._isDrawing = true; DOM.spreadDrawBtn.disabled = true; DOM.spreadDrawBtn.style.opacity = '0.5';
-    const question = Validate.question(DOM.spreadQuestion.value.trim()).clean;
-    const spread = SPREADS[this._current];
-    this._cards = DECK.getRandom(3).map(card => ({ card, isReversed: Math.random() < CONFIG.reversedProbability }));
     DOM.spreadCardsRow.style.display = 'flex';
-    spread.slots.forEach((label, i) => { document.getElementById('slotLabel'+i).textContent = label; });
-    for (let i=0;i<3;i++) { await sleep(CONFIG.spreadRevealDelay + i*CONFIG.spreadRevealStep); this._revealMiniCard(i, this._cards[i]); }
+    allSlots.forEach((slot, i) => {
+      const labelEl = document.getElementById('slotLabel' + i);
+      if (labelEl) labelEl.textContent = slot.name;
+    });
+
+    // Показываем только карты текущей фазы с задержкой
+    const phaseStart = this._drawnCards.length - spreadDef.phases[this._phaseIndex].slots.length;
+    for (let i = phaseStart; i < totalDrawn; i++) {
+      await sleep(CONFIG.spreadRevealDelay + (i - phaseStart) * CONFIG.spreadRevealStep);
+      this._revealMiniCard(i, this._drawnCards[i]);
+    }
+
+    // Скрываем кнопку «следующая» пока грузим
+    this._hideNextPhaseBtn();
+
+    if (!this._aiEnabled) {
+      this._renderReadingNoAI();
+      this._isDrawing = false;
+      this._afterSpreadPhase();
+      return;
+    }
+
     DOM.spreadReadingBox.style.display = 'block';
     DOM.spreadReadingContent.innerHTML = '<div class="reading-text loading">Читаю расклад<span class="cursor"></span></div>';
     await sleep(400);
 
-    const prompt = API.buildSpreadPrompt(this._cards, spread, question);
-    const raw = await API.call({ prompt, maxTokens: CONFIG.apiMaxTokensSpread, type: 'spread' });
-    let parsed = null;
-    if (raw) {
-      try {
-        parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
-      } catch(e) {
-        const jsonMatch = raw.match(/\{[\s\S]*"cards"[\s\S]*\}/);
-        if (jsonMatch) {
-          try { parsed = JSON.parse(jsonMatch[0]); } catch(e2) {}
-        }
-      }
-    }
-    this._renderReading(this._cards, spread, parsed);
+    const prompt = API.buildPrompt(this._drawnCards, spreadDef, {
+      question: this._question,
+      phaseIndex: this._phaseIndex,
+      prevReading: this._prevReading,
+    });
+    const raw = await API.call({ prompt, maxTokens: spreadDef.maxTokens, type: spreadDef.rateLimitType });
+    const parsed = this._parseRaw(raw, spreadDef.responseFormat.type);
 
+    this._prevReading = this._extractReadingText(parsed);
+    this._renderReadingParsed(parsed);
     this._isDrawing = false;
-    DOM.spreadDrawBtn.style.opacity = '0.4'; DOM.spreadDrawBtn.style.cursor = 'default';
-    DOM.spreadDrawBtn.innerHTML = '<span>↺</span><span>Новый расклад</span>';
+    this._afterSpreadPhase();
+  },
+
+  _afterSpreadPhase() {
+    const spreadDef = this._spreadDef;
+    const isLastPhase = this._phaseIndex >= spreadDef.phases.length - 1;
+
+    if (!isLastPhase) {
+      // Показываем кнопку следующей фазы
+      this._showNextPhaseBtn();
+    } else {
+      // Финал
+      DOM.spreadDrawBtn.style.opacity = '0.4';
+      DOM.spreadDrawBtn.style.cursor = 'default';
+      DOM.spreadDrawBtn.innerHTML = '<span>↺</span><span>Новый расклад</span>';
+      DOM.spreadDrawBtn.disabled = false;
+      DOM.spreadDrawBtn.setAttribute('data-action', 'reset-spread');
+      History.save({ spreadId: spreadDef.id, date: new Date().toLocaleDateString('ru-RU', { day:'numeric', month:'short' }), name: spreadDef.name, symbol: this._drawnCards.map(({card}) => card.symbol).join(''), ts: Date.now() });
+      History.render();
+      Events.emit('spread:drawn', { cards: this._drawnCards, spreadId: spreadDef.id });
+    }
+  },
+
+  // ─── Следующая фаза (по кнопке) ──────────────────────────────────────────────
+  async nextPhase() {
+    if (this._isDrawing) return;
+    this._phaseIndex++;
+    await this._runPhase();
+  },
+
+  // ─── Кнопка следующей фазы ───────────────────────────────────────────────────
+  _showNextPhaseBtn() {
+    const nextPhase = this._spreadDef.phases[this._phaseIndex + 1];
+    const slotNames = nextPhase.slots.map(s => s.name).join(' · ');
     DOM.spreadDrawBtn.disabled = false;
-    DOM.spreadDrawBtn.setAttribute('data-action', 'reset-spread');
-    History.save({ type: 'spread', date: new Date().toLocaleDateString('ru-RU', { day:'numeric', month:'short' }), name: spread.label, symbol: this._cards.map(({card})=>card.symbol).join(''), ts: Date.now() });
-    History.render();
-    Events.emit('spread:drawn', { cards: this._cards, spread: this._current });
+    DOM.spreadDrawBtn.style.opacity = '';
+    DOM.spreadDrawBtn.style.cursor = '';
+    DOM.spreadDrawBtn.innerHTML = '<span>✦</span><span>Открыть: ' + slotNames + '</span>';
+    DOM.spreadDrawBtn.setAttribute('data-action', 'next-spread-phase');
   },
 
+  _hideNextPhaseBtn() {
+    DOM.spreadDrawBtn.disabled = true;
+    DOM.spreadDrawBtn.style.opacity = '0.5';
+  },
+
+  // ─── Сброс расклада ──────────────────────────────────────────────────────────
+  resetSpread() {
+    this._spreadDef = null;
+    this._drawnCards = [];
+    this._phaseIndex = 0;
+    this._prevReading = '';
+    this._question = '';
+    this._isDrawing = false;
+    DOM.spreadCardsRow.style.display = 'none';
+    DOM.spreadReadingBox.style.display = 'none';
+    DOM.spreadDrawBtn.disabled = false;
+    DOM.spreadDrawBtn.style.opacity = '';
+    DOM.spreadDrawBtn.style.cursor = '';
+    DOM.spreadDrawBtn.innerHTML = '<span>✦</span><span>Разложить карты</span>';
+    DOM.spreadDrawBtn.setAttribute('data-action', 'draw-spread');
+  },
+
+  // ─── Динамическая генерация слотов карточек ───────────────────────────────────
+  _ensureSpreadCardSlots(count) {
+    const row = DOM.spreadCardsRow;
+    const existing = row.querySelectorAll('.spread-card-wrap').length;
+    if (existing >= count) return;
+    for (let i = existing; i < count; i++) {
+      const wrap = document.createElement('div');
+      wrap.className = 'spread-card-wrap';
+      wrap.innerHTML = `
+        <div class="spread-card-slot-label" id="slotLabel${i}"></div>
+        <div class="spread-mini-card face-down" id="spreadCard${i}">
+          <svg viewBox="0 0 220 380" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="200" height="360" rx="8" fill="none" stroke="#b8996a" stroke-width="1.5"/><line x1="10" y1="10" x2="210" y2="370" stroke="#b8996a" stroke-width="0.5"/><line x1="210" y1="10" x2="10" y2="370" stroke="#b8996a" stroke-width="0.5"/><circle cx="110" cy="190" r="50" fill="none" stroke="#b8996a" stroke-width="0.5"/></svg>
+          <span class="mini-back-symbol">✦</span>
+        </div>`;
+      row.appendChild(wrap);
+    }
+    // Сбрасываем лишние слоты в face-down
+    row.querySelectorAll('.spread-mini-card').forEach((el, i) => {
+      if (i >= count) { el.closest('.spread-card-wrap').remove(); return; }
+      if (!el.classList.contains('face-down')) {
+        el.className = 'spread-mini-card face-down';
+        el.innerHTML = `<svg viewBox="0 0 220 380" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="200" height="360" rx="8" fill="none" stroke="#b8996a" stroke-width="1.5"/><line x1="10" y1="10" x2="210" y2="370" stroke="#b8996a" stroke-width="0.5"/><line x1="210" y1="10" x2="10" y2="370" stroke="#b8996a" stroke-width="0.5"/><circle cx="110" cy="190" r="50" fill="none" stroke="#b8996a" stroke-width="0.5"/></svg><span class="mini-back-symbol">✦</span>`;
+      }
+    });
+  },
+
+  // ─── Открыть мини-карту ───────────────────────────────────────────────────────
   _revealMiniCard(i, { card, isReversed }) {
-    const el = document.getElementById('spreadCard'+i); el.classList.remove('face-down');
-    el.innerHTML = '<div class="spread-mini-symbol" style="'+(isReversed?'transform:rotate(180deg)':'')+'">'+card.symbol+'</div><div class="spread-mini-name">'+card.name+'</div>'+(isReversed?'<div class="spread-mini-rev">перевёрнутая</div>':'');
+    const el = document.getElementById('spreadCard' + i);
+    if (!el) return;
+    el.classList.remove('face-down');
+    el.innerHTML = '<div class="spread-mini-symbol" style="' + (isReversed ? 'transform:rotate(180deg)' : '') + '">' + card.symbol + '</div><div class="spread-mini-name">' + card.name + '</div>' + (isReversed ? '<div class="spread-mini-rev">перевёрнутая</div>' : '');
   },
 
-  _renderReading(drawnCards, spread, parsed) {
+  // ─── Рендер чтения без AI ────────────────────────────────────────────────────
+  _renderReadingNoAI() {
+    const spreadDef = this._spreadDef;
+    const allSlots = spreadDef.phases.slice(0, this._phaseIndex + 1).flatMap(p => p.slots);
+    DOM.spreadReadingBox.style.display = 'block';
+    DOM.spreadReadingContent.innerHTML = this._drawnCards.map(({ card, isReversed }, i) => {
+      const slot = allSlots[i];
+      return '<div class="spread-reading-card-block">'
+        + '<div class="spread-reading-card-label">' + (slot ? slot.name : '') + '</div>'
+        + '<div class="spread-reading-card-name">' + card.name + (isReversed ? ' · перевёрнутая' : '') + '</div>'
+        + '<div class="spread-reading-card-text">' + (card.interpretation || card.keywords) + '</div>'
+        + '</div>';
+    }).join('');
+  },
+
+  // ─── Рендер чтения с AI ──────────────────────────────────────────────────────
+  _renderReadingParsed(parsed) {
+    const spreadDef = this._spreadDef;
     const el = DOM.spreadReadingContent;
-    if (!parsed) { el.innerHTML = drawnCards.map(({card,isReversed},i) => '<div class="spread-reading-card-block"><div class="spread-reading-card-label">'+spread.slots[i]+'</div><div class="spread-reading-card-name">'+card.name+(isReversed?' (перевёрнутая)':'')+'</div><div class="spread-reading-card-text">Карта несёт энергию: '+card.keywords+'. Обрати на неё внимание в контексте этой позиции.</div></div>').join(''); return; }
-    const blocks = parsed.cards.map(({slot,text},i) => { const {card,isReversed}=drawnCards[i]; return '<div class="spread-reading-card-block"><div class="spread-reading-card-label">'+slot+'</div><div class="spread-reading-card-name">'+card.name+(isReversed?' · перевёрнутая':'')+'</div><div class="spread-reading-card-text">'+text+'</div></div>'; }).join('');
-    const summary = parsed.summary ? '<div class="spread-reading-summary"><span class="spread-reading-summary-label">Общий вывод</span>'+parsed.summary+'</div>' : '';
+    if (!parsed) { this._renderReadingNoAI(); return; }
+
+    if (spreadDef.responseFormat.type === 'day') {
+      el.innerHTML = '<div class="reading-text">' + (parsed.reading || '') + '</div>';
+      return;
+    }
+
+    const blocks = (parsed.cards || []).map(({ slot, text }, i) => {
+      const { card, isReversed } = this._drawnCards[i] || {};
+      if (!card) return '';
+      return '<div class="spread-reading-card-block">'
+        + '<div class="spread-reading-card-label">' + slot + '</div>'
+        + '<div class="spread-reading-card-name">' + card.name + (isReversed ? ' · перевёрнутая' : '') + '</div>'
+        + '<div class="spread-reading-card-text">' + text + '</div>'
+        + '</div>';
+    }).join('');
+
+    const summary = parsed.summary
+      ? '<div class="spread-reading-summary"><span class="spread-reading-summary-label">Общий вывод</span>' + parsed.summary + '</div>'
+      : '';
+
     el.innerHTML = blocks + summary;
+  },
+
+  // ─── Извлечь текст для передачи в следующую фазу ─────────────────────────────
+  _extractReadingText(parsed) {
+    if (!parsed) return '';
+    if (parsed.reading) return parsed.reading;
+    if (parsed.cards) return parsed.cards.map(c => c.slot + ': ' + c.text).join(' ');
+    return '';
+  },
+};
+
+// ─── Backward-compatible aliases ─────────────────────────────────────────────
+const CardOfDay = {
+  todayKey() { return SpreadEngine.todayKey('card_of_day'); },
+  async restore() {
+    const spreadDef = SPREAD_CATALOG.find(s => s.id === 'card_of_day');
+    return SpreadEngine._restoreDay(spreadDef);
+  },
+  async draw() {
+    const spreadDef = SPREAD_CATALOG.find(s => s.id === 'card_of_day');
+    await SpreadEngine.startSpread(spreadDef, { aiEnabled: SpreadEngine._aiEnabled });
+  },
+  reset() { SpreadEngine.resetDay(); },
+};
+
+const Spread = {
+  _current: 'past',
+  select(type) {
+    this._current = type;
+    const idMap = { past: 'past_present_future', situation: 'situation_advice_outcome', mind: 'mind_body_spirit' };
+    const spreadDef = SPREAD_CATALOG.find(s => s.id === idMap[type]);
+    if (!spreadDef) return;
+    DOM.spreadDropdownTitle.textContent = spreadDef.name;
+    DOM.spreadDropdownDesc.textContent = spreadDef.description;
+    Object.keys(idMap).forEach(k => {
+      const el = document.getElementById('spreadOpt_' + k);
+      if (el) { el.classList.toggle('selected', k === type); el.setAttribute('aria-selected', k === type ? 'true' : 'false'); }
+    });
+    this.closeDropdown(); this.updateHint(); SpreadEngine.resetSpread();
+  },
+  updateHint() {
+    const idMap = { past: 'past_present_future', situation: 'situation_advice_outcome', mind: 'mind_body_spirit' };
+    const spreadDef = SPREAD_CATALOG.find(s => s.id === idMap[this._current]);
+    if (!spreadDef) return;
+    DOM.spreadHint.innerHTML = spreadDef.questionHint || '';
+    DOM.spreadQuestion.placeholder = spreadDef.questionPlaceholder || '';
+  },
+  toggleDropdown() { const o = DOM.spreadDropdownMenu.classList.contains('open'); DOM.spreadDropdownMenu.classList.toggle('open', !o); DOM.spreadDropdownBtn.classList.toggle('open', !o); },
+  closeDropdown() { DOM.spreadDropdownMenu.classList.remove('open'); DOM.spreadDropdownBtn.classList.remove('open'); },
+  resetUI() { SpreadEngine.resetSpread(); },
+  async draw() {
+    const idMap = { past: 'past_present_future', situation: 'situation_advice_outcome', mind: 'mind_body_spirit' };
+    const spreadDef = SPREAD_CATALOG.find(s => s.id === idMap[this._current]);
+    if (!spreadDef) return;
+    const question = Validate.question(DOM.spreadQuestion.value.trim()).clean;
+    const aiEnabled = DOM.aiToggle ? DOM.aiToggle.checked : true;
+    await SpreadEngine.startSpread(spreadDef, { question, aiEnabled });
   },
 };
 
@@ -1068,12 +1631,26 @@ document.addEventListener('click', (e) => {
   const target = e.target.closest('[data-action]');
   if (!target) return;
   const actions = {
-    'draw-card': () => CardOfDay.draw(), 'open-drawer': () => Profile.open(), 'close-drawer': () => Profile.close(),
-    'save-profile': () => Profile.save(), 'reset-today': () => CardOfDay.reset(),
-    'mode-day': () => UI.switchMode('day'), 'mode-spread': () => UI.switchMode('spread'),
-    'toggle-spread-dropdown': () => Spread.toggleDropdown(), 'draw-spread': () => Spread.draw(),
-    'reset-spread': () => { Spread.resetUI(); }, 'select-spread': () => Spread.select(target.dataset.spread),
-    'google-signin': () => window.signInWithGoogle(), 'sign-out': () => window.signOutUser(),
+    'draw-card':          () => CardOfDay.draw(),
+    'open-drawer':        () => Profile.open(),
+    'close-drawer':       () => Profile.close(),
+    'save-profile':       () => Profile.save(),
+    'reset-today':        () => CardOfDay.reset(),
+    'mode-day':           () => UI.switchMode('day'),
+    'mode-spread':        () => UI.switchMode('spread'),
+    'toggle-spread-dropdown': () => Spread.toggleDropdown(),
+    'draw-spread':        () => Spread.draw(),
+    'reset-spread':       () => Spread.resetUI(),
+    'select-spread':      () => Spread.select(target.dataset.spread),
+    'next-spread-phase':  () => SpreadEngine.nextPhase(),
+    'select-deck':        () => {
+      DeckStore.set(target.dataset.deckId);
+      DeckStore.saveToCloud(target.dataset.deckId);
+      DeckUI.render();
+      Notify.show('Колода изменена: ' + DeckStore.get().name, 'success');
+    },
+    'google-signin':      () => window.signInWithGoogle(),
+    'sign-out':           () => window.signOutUser(),
   };
   const fn = actions[target.dataset.action];
   if (fn) fn();
@@ -1099,6 +1676,28 @@ DOM.profileDrawer && DOM.profileDrawer.addEventListener('keydown', (e) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// DECK UI — выбор колоды в профиле
+// ═══════════════════════════════════════════════════════════════════════════════
+const DeckUI = {
+  render() {
+    const container = document.getElementById('deckList');
+    if (!container) return;
+    const activeDeckId = DeckStore.get().id;
+    container.innerHTML = DECK_CATALOG.map(deck => `
+      <div class="deck-item ${deck.id === activeDeckId ? 'active' : ''}"
+           data-action="select-deck" data-deck-id="${deck.id}"
+           role="radio" aria-checked="${deck.id === activeDeckId}" tabindex="0">
+        <div class="deck-item-info">
+          <div class="deck-item-name">${deck.name}</div>
+          <div class="deck-item-desc">${deck.description}</div>
+          <div class="deck-item-meta">${deck.cards.length} карт${deck.reversible ? ' · перевёрнутые' : ''}</div>
+        </div>
+        <div class="deck-item-check">${deck.id === activeDeckId ? '✦' : ''}</div>
+      </div>`).join('');
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // APP INIT
 // ═══════════════════════════════════════════════════════════════════════════════
 const App = {
@@ -1111,6 +1710,7 @@ const App = {
       History.render(); CardOfDay.restore();
     }
     Spread.updateHint(); UI.startCountdown();
+    DeckUI.render();
   },
 };
 
