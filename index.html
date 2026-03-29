@@ -542,7 +542,12 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 // ═══════════════════════════════════════════════════════════════════════════════
 const Store = {
   get(key, fallback = null) {
-    try { const raw = localStorage.getItem(key); if (raw === null) return fallback; return JSON.parse(raw); }
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw === null) return fallback;
+      try { return JSON.parse(raw); }
+      catch(e) { return raw; } // backward compat: old code stored raw strings without JSON.stringify
+    }
     catch(e) { return fallback; }
   },
   set(key, value) {
@@ -800,8 +805,8 @@ const Profile = {
 // API
 // ═══════════════════════════════════════════════════════════════════════════════
 const API = {
-  mode: 'direct', // 'direct' | 'proxy'
-  proxyUrl: '',   // TODO: backend-proxy
+  mode: 'proxy', // 'direct' | 'proxy'
+  proxyUrl: 'https://dea-tarot-proxy.michaelkazakov97.workers.dev', // CHANGE to your Worker URL
 
   async call({ prompt, maxTokens = CONFIG.apiMaxTokensDay }) {
     if (this.mode === 'proxy' && this.proxyUrl) return this._callProxy(prompt, maxTokens);
@@ -809,8 +814,7 @@ const API = {
   },
 
   async _callDirect(prompt, maxTokens) {
-    const key = Store.get(CONFIG.storageKeys.apiKey, ''); // TODO: backend-proxy
-    console.log('[Dea API] key exists:', !!key, 'key prefix:', key ? key.slice(0, 10) + '...' : 'none');
+    const key = Store.get(CONFIG.storageKeys.apiKey, '');
     if (!key) return null;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), CONFIG.apiTimeout);
@@ -822,20 +826,37 @@ const API = {
         signal: controller.signal,
       });
       clearTimeout(timeout);
-      console.log('[Dea API] response status:', res.status);
       const data = await res.json();
-      console.log('[Dea API] response data:', JSON.stringify(data).slice(0, 300));
       return data?.content?.[0]?.text || null;
     } catch(e) {
       clearTimeout(timeout);
-      console.log('[Dea API] ❌ fetch error:', e.name, e.message);
       if (e.name === 'AbortError') Notify.show('Запрос слишком долгий — используем встроенное предсказание', 'info');
       else log('warn', 'API error:', e.message);
       return null;
     }
   },
 
-  async _callProxy(prompt, maxTokens) { log('warn', 'Proxy mode not configured'); return null; },
+  async _callProxy(prompt, maxTokens) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), CONFIG.apiTimeout);
+    try {
+      const res = await fetch(this.proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, maxTokens }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const data = await res.json();
+      if (data.error) { log('warn', 'Proxy error:', data.error); return null; }
+      return data.text || null;
+    } catch(e) {
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') Notify.show('Запрос слишком долгий — используем встроенное предсказание', 'info');
+      else log('warn', 'Proxy error:', e.message);
+      return null;
+    }
+  },
 
   buildDayPrompt(card, isReversed) {
     const birthCtx = Profile.buildContext();
@@ -1047,29 +1068,18 @@ const Spread = {
     await sleep(400);
 
     const prompt = API.buildSpreadPrompt(this._cards, spread, question);
-    console.log('[Dea Spread] prompt length:', prompt.length);
     const raw = await API.call({ prompt, maxTokens: CONFIG.apiMaxTokensSpread });
-    console.log('[Dea Spread] raw response:', raw ? raw.slice(0, 300) : 'NULL');
     let parsed = null;
     if (raw) {
       try {
         parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
-        console.log('[Dea Spread] ✅ direct JSON parse OK');
       } catch(e) {
-        console.log('[Dea Spread] direct parse failed:', e.message);
-        // try extracting JSON from mixed text
         const jsonMatch = raw.match(/\{[\s\S]*"cards"[\s\S]*\}/);
         if (jsonMatch) {
-          console.log('[Dea Spread] regex match found, length:', jsonMatch[0].length);
-          try { parsed = JSON.parse(jsonMatch[0]); console.log('[Dea Spread] ✅ regex JSON parse OK'); } catch(e2) { console.log('[Dea Spread] regex parse failed:', e2.message); }
-        } else {
-          console.log('[Dea Spread] ❌ no JSON found in response');
+          try { parsed = JSON.parse(jsonMatch[0]); } catch(e2) {}
         }
       }
-    } else {
-      console.log('[Dea Spread] ❌ API returned null — check API key and network');
     }
-    console.log('[Dea Spread] parsed:', parsed ? 'OK with ' + (parsed.cards?.length || 0) + ' cards' : 'NULL → fallback');
     this._renderReading(this._cards, spread, parsed);
 
     this._isDrawing = false;
