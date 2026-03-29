@@ -790,22 +790,27 @@ const Profile = {
 const API = {
   proxyUrl: 'https://dea-tarot-proxy.michaelkazakov97.workers.dev',
 
-  async call({ prompt, maxTokens = CONFIG.apiMaxTokensDay }) {
-    return this._callProxy(prompt, maxTokens);
+  async call({ prompt, maxTokens = CONFIG.apiMaxTokensDay, type = 'default' }) {
+    return this._callProxy(prompt, maxTokens, type);
   },
 
-  async _callProxy(prompt, maxTokens) {
+  async _callProxy(prompt, maxTokens, type = 'default') {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), CONFIG.apiTimeout);
     try {
       const res = await fetch(this.proxyUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, maxTokens }),
+        body: JSON.stringify({ prompt, maxTokens, type }),
         signal: controller.signal,
       });
       clearTimeout(timeout);
       const data = await res.json();
+      if (data.error === 'rate_limit') {
+        const mins = Math.ceil(data.retry_after / 60);
+        Notify.show('Лимит запросов исчерпан. Попробуй через ' + mins + ' мин.', 'error');
+        return null;
+      }
       if (data.error) { log('warn', 'Proxy error:', data.error); return null; }
       return data.text || null;
     } catch(e) {
@@ -925,7 +930,7 @@ const CardOfDay = {
 
     setTimeout(async () => {
       const prompt = API.buildDayPrompt(card, isReversed);
-      const raw = await API.call({ prompt, maxTokens: CONFIG.apiMaxTokensDay });
+      const raw = await API.call({ prompt, maxTokens: CONFIG.apiMaxTokensDay, type: 'day' });
       let reading = '';
       let reflection = '';
       if (raw) {
@@ -1018,7 +1023,7 @@ const Spread = {
     await sleep(400);
 
     const prompt = API.buildSpreadPrompt(this._cards, spread, question);
-    const raw = await API.call({ prompt, maxTokens: CONFIG.apiMaxTokensSpread });
+    const raw = await API.call({ prompt, maxTokens: CONFIG.apiMaxTokensSpread, type: 'spread' });
     let parsed = null;
     if (raw) {
       try {
