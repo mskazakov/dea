@@ -137,6 +137,12 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 .profile-icon-btn:hover { border-color: var(--gold); }
 .profile-icon-btn img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: none; }
 .profile-icon-btn .profile-icon-placeholder { font-size: 16px; color: var(--ink-muted); }
+.deck-icon-btn { position: fixed; top: 68px; right: 20px; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 200; transition: border-color 0.3s, box-shadow 0.3s; padding: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.07); font-size: 18px; line-height: 1; }
+.deck-icon-btn:hover { border-color: var(--gold); }
+.deck-drawer-overlay { position: fixed; inset: 0; background: rgba(26,24,20,0.3); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.deck-drawer-overlay.open { opacity: 1; pointer-events: all; }
+.deck-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 92vw); background: var(--surface); z-index: 301; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; box-shadow: -8px 0 40px rgba(0,0,0,0.10); overflow-y: auto; }
+.deck-drawer.open { transform: translateX(0); }
 .profile-drawer-overlay { position: fixed; inset: 0; background: rgba(26,24,20,0.3); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
 .profile-drawer-overlay.open { opacity: 1; pointer-events: all; }
 .profile-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 92vw); background: var(--surface); z-index: 301; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; box-shadow: -8px 0 40px rgba(0,0,0,0.10); overflow-y: auto; }
@@ -401,6 +407,19 @@ window.loadHistory = async function() {
   <img id="userAvatar" src="" alt=""><span class="profile-icon-placeholder">◎</span>
 </button>
 
+<button class="deck-icon-btn" id="deckIconBtn" data-action="open-deck-drawer" aria-label="Выбрать колоду" data-testid="deck-btn">🂠</button>
+
+<div class="deck-drawer-overlay" id="deckDrawerOverlay" data-action="close-deck-drawer" aria-hidden="true"></div>
+<div class="deck-drawer" id="deckDrawer" role="dialog" aria-modal="true" aria-label="Колода" data-testid="deck-drawer">
+  <div class="drawer-header">
+    <span class="drawer-title">Колода</span>
+    <button class="drawer-close" data-action="close-deck-drawer" aria-label="Закрыть">✕</button>
+  </div>
+  <div class="drawer-section" style="padding-top:16px;">
+    <div class="deck-list" id="deckList"></div>
+  </div>
+</div>
+
 <div class="profile-drawer-overlay" id="drawerOverlay" data-action="close-drawer" aria-hidden="true"></div>
 
 <div class="profile-drawer" id="profileDrawer" role="dialog" aria-modal="true" aria-label="Профиль" data-testid="profile-drawer">
@@ -445,10 +464,6 @@ window.loadHistory = async function() {
         <button class="profile-save-btn" data-action="save-profile" data-testid="save-profile-btn">Сохранить</button>
         <span class="profile-saved-msg" id="profileSavedMsg">✓ Сохранено</span>
       </div>
-    </div>
-    <div class="drawer-section" style="margin-top:24px;" role="region" aria-label="Колода">
-      <div class="drawer-section-title">Колода</div>
-      <div class="deck-list" id="deckList"></div>
     </div>
     <div class="drawer-section" style="margin-top:32px; padding-bottom:40px;" role="region" aria-label="История">
       <div class="drawer-section-title">История</div>
@@ -687,6 +702,9 @@ function cacheDOM() {
    'userGender','profileSavedMsg','historyList','spreadPicker',
    'reflectionBox','reflectionText','aiToggle'
   ].forEach(id => { DOM[id] = document.getElementById(id); });
+  DOM.deckIconBtn = document.getElementById('deckIconBtn');
+  DOM.deckDrawer = document.getElementById('deckDrawer');
+  DOM.deckDrawerOverlay = document.getElementById('deckDrawerOverlay');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1758,6 +1776,8 @@ document.addEventListener('click', (e) => {
     'draw-card':          () => CardOfDay.draw(),
     'open-drawer':        () => Profile.open(),
     'close-drawer':       () => Profile.close(),
+    'open-deck-drawer':   () => DeckDrawer.open(),
+    'close-deck-drawer':  () => DeckDrawer.close(),
     'save-profile':       () => Profile.save(),
     'reset-today':        () => CardOfDay.reset(),
     'mode-day':           () => UI.switchMode('day'),
@@ -1786,7 +1806,7 @@ document.addEventListener('click', (e) => { if (DOM.spreadPicker && !DOM.spreadP
 // KEYBOARD ACCESSIBILITY
 // ═══════════════════════════════════════════════════════════════════════════════
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { if (DOM.profileDrawer.classList.contains('open')) Profile.close(); if (DOM.spreadDropdownMenu.classList.contains('open')) Spread.closeDropdown(); }
+  if (e.key === 'Escape') { if (DOM.deckDrawer.classList.contains('open')) DeckDrawer.close(); if (DOM.profileDrawer.classList.contains('open')) Profile.close(); if (DOM.spreadDropdownMenu.classList.contains('open')) Spread.closeDropdown(); }
   if ((e.key === 'Enter' || e.key === ' ') && document.activeElement === DOM.cardBack) { e.preventDefault(); CardOfDay.draw(); }
 });
 
@@ -1800,7 +1820,15 @@ DOM.profileDrawer && DOM.profileDrawer.addEventListener('keydown', (e) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// DECK UI — выбор колоды в профиле
+// DECK DRAWER — шторка выбора колоды
+// ═══════════════════════════════════════════════════════════════════════════════
+const DeckDrawer = {
+  open() { DOM.deckDrawer.classList.add('open'); DOM.deckDrawerOverlay.classList.add('open'); document.body.style.overflow = 'hidden'; },
+  close() { DOM.deckDrawer.classList.remove('open'); DOM.deckDrawerOverlay.classList.remove('open'); document.body.style.overflow = ''; DOM.deckIconBtn.focus(); },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DECK UI — выбор колоды
 // ═══════════════════════════════════════════════════════════════════════════════
 const DeckUI = {
   render() {
@@ -1818,6 +1846,13 @@ const DeckUI = {
         </div>
         <div class="deck-item-check">${deck.id === activeDeckId ? '✦' : ''}</div>
       </div>`).join('');
+    this.updateButtonColor();
+  },
+  updateButtonColor() {
+    if (!DOM.deckIconBtn) return;
+    const deck = DeckStore.get();
+    const accent = deck.palette?.accent || 'var(--border)';
+    DOM.deckIconBtn.style.borderColor = accent;
   },
 };
 
