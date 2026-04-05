@@ -292,6 +292,7 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics-compat.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyDCzIHNyNedzxGMN251rS4qzI7lMMWGDlA",
@@ -303,6 +304,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 window.auth = firebase.auth();
+window.analytics = firebase.analytics();
 
 // Firestore: connect to named database 'dea-tarot-db'
 // compat SDK's internal _databaseId can be overridden before first use
@@ -1325,6 +1327,7 @@ const SpreadEngine = {
   // ─── Запустить расклад ───────────────────────────────────────────────────────
   async startSpread(spreadDef, { question = '', aiEnabled = true } = {}) {
     if (this._isDrawing) return;
+    if (window.analytics) firebase.analytics().logEvent('spread_started', { spread_id: spreadDef.id, ai_enabled: aiEnabled, deck_id: DeckStore.activeDeckId });
 
     // Проверка dailyLimit: localStorage + Firestore для залогиненных
     if (spreadDef.dailyLimit) {
@@ -1450,6 +1453,7 @@ const SpreadEngine = {
     History.save({ spreadId: spreadDef.id, date: new Date().toLocaleDateString('ru-RU', { day:'numeric', month:'short' }), name: card.name + (isReversed ? ' ↩' : ''), symbol: card.symbol, ts: Date.now() });
     History.render();
     Events.emit('card:drawn', { card, isReversed });
+    if (window.analytics) firebase.analytics().logEvent('card_drawn', { card_name: card.name, is_reversed: isReversed, spread_id: spreadDef.id, deck_id: DeckStore.activeDeckId });
   },
 
   _setDayDrawnState() {
@@ -1685,6 +1689,7 @@ const SpreadEngine = {
     const spreadDef = this._spreadDef;
     const el = DOM.spreadReadingContent;
     if (!parsed) { this._renderReadingNoAI(); return; }
+    if (window.analytics) firebase.analytics().logEvent('reading_viewed', { spread_id: spreadDef.id, ai: true });
 
     if (spreadDef.responseFormat.type === 'day') {
       el.innerHTML = '<div class="reading-text">' + (parsed.reading || '') + '</div>';
