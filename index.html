@@ -120,7 +120,9 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 .reading-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 36px 40px; }
 .reading-title { font-family: var(--font-serif); font-size: 13px; font-style: italic; color: var(--gold); letter-spacing: 0.08em; margin-bottom: 16px; }
 .reading-text { font-family: var(--font-serif); font-size: 19px; line-height: 1.75; color: var(--ink); font-weight: 300; }
-.reading-text.loading { color: var(--ink-muted); font-style: italic; font-size: 16px; animation: pulse 2s ease-in-out infinite; }
+.reading-text.loading { color: var(--ink-muted); font-style: italic; font-size: 16px; }
+.loading-phrase { display: inline; transition: opacity 0.3s ease; }
+.loading-phrase.fade-out { opacity: 0; }
 .reflection-box { background: var(--bg); border-color: var(--gold-light); }
 .reflection-text { font-style: italic; color: var(--ink-muted); }
 .cursor { display: inline-block; width: 2px; height: 1em; background: var(--gold); vertical-align: text-bottom; animation: blink 1s step-end infinite; margin-left: 2px; }
@@ -562,6 +564,54 @@ const CONFIG = {
 // ═══════════════════════════════════════════════════════════════════════════════
 function log(level, ...args) { if (CONFIG.debug || level === 'error') console[level]('[Dea]', ...args); }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOADING PHRASES — фразы ожидания при загрузке предсказания
+// ═══════════════════════════════════════════════════════════════════════════════
+const LOADING_PHRASES = [
+  'Читаю карты ✦', 'Слушаю шёпот 🌙', 'Вижу знаки ⭐', 'Ловлю нити 🕸️',
+  'Зажигаю свечи 🕯️', 'Открываю путь 🚪', 'Считываю символы 🔮', 'Плету узор ✨',
+  'Вглядываюсь глубже 👁️', 'Ищу послание 📜', 'Настраиваю связь 🌀', 'Чувствую энергию ⚡',
+  'Собираю смыслы 🧩', 'Тяну нить судьбы 🪢', 'Шепчу вопрос 💫', 'Слышу ответ 🌊',
+  'Касаюсь тайны 🗝️', 'Ловлю отражение 🪞', 'Складываю картину 🎴', 'Не торопи 😌',
+  'Почти готово 🫣', 'Думаю думу 🤔', 'Завариваю чай 🍵', 'Щас всё будет 🫡',
+  'Карты шепчутся 🃏', 'Секундочку… 👀', 'Звёзды спорят 🌟', 'Тасую судьбу 🎰',
+  'Колдую потихоньку 🧙', 'Ещё чуть-чуть 🐌',
+];
+
+const LoadingRotator = {
+  _interval: null,
+  _lastIndex: -1,
+
+  _pick() {
+    let idx;
+    do { idx = Math.floor(Math.random() * LOADING_PHRASES.length); } while (idx === this._lastIndex);
+    this._lastIndex = idx;
+    return LOADING_PHRASES[idx];
+  },
+
+  start(el) {
+    this.stop();
+    const span = document.createElement('span');
+    span.className = 'loading-phrase';
+    span.textContent = this._pick();
+    el.innerHTML = '';
+    el.className = (el.className.replace(/\bloading\b/, '') + ' loading').trim();
+    el.appendChild(span);
+
+    this._interval = setInterval(() => {
+      span.classList.add('fade-out');
+      setTimeout(() => {
+        span.textContent = this._pick();
+        span.classList.remove('fade-out');
+      }, 300);
+    }, 2000);
+  },
+
+  stop() {
+    if (this._interval) { clearInterval(this._interval); this._interval = null; }
+  },
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // STORE — localStorage abstraction
@@ -1326,13 +1376,14 @@ const SpreadEngine = {
     }
 
     DOM.readingText.className = 'reading-text loading';
-    DOM.readingText.innerHTML = 'Читаю послание карты<span class="cursor"></span>';
+    LoadingRotator.start(DOM.readingText);
 
     await sleep(CONFIG.cardFlipDelay);
 
     const prompt = API.buildPrompt([{ card, isReversed }], spreadDef);
     const raw = await API.call({ prompt, maxTokens: spreadDef.maxTokens, type: spreadDef.rateLimitType });
     const parsed = this._parseRaw(raw, 'day');
+    LoadingRotator.stop();
 
     let reading = parsed?.reading || '';
     const reflection = parsed?.reflection || '';
@@ -1483,7 +1534,8 @@ const SpreadEngine = {
     }
 
     DOM.spreadReadingBox.style.display = 'block';
-    DOM.spreadReadingContent.innerHTML = '<div class="reading-text loading">Читаю расклад<span class="cursor"></span></div>';
+    DOM.spreadReadingContent.innerHTML = '<div class="reading-text loading"></div>';
+    LoadingRotator.start(DOM.spreadReadingContent.querySelector('.reading-text'));
     await sleep(400);
 
     const prompt = API.buildPrompt(this._drawnCards, spreadDef, {
@@ -1493,6 +1545,7 @@ const SpreadEngine = {
     });
     const raw = await API.call({ prompt, maxTokens: spreadDef.maxTokens, type: spreadDef.rateLimitType });
     const parsed = this._parseRaw(raw, spreadDef.responseFormat.type);
+    LoadingRotator.stop();
 
     this._prevReading = this._extractReadingText(parsed);
     this._renderReadingParsed(parsed);
