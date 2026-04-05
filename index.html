@@ -1368,21 +1368,14 @@ const SpreadEngine = {
       const docRef = window.db.collection('users').doc(window._uid).collection('daily').doc(this.localDateStr());
       docRef.get().then(snap => {
         if (snap.exists) {
-          // Другое устройство уже записало — берём ту карту как правильную
-          const remote = snap.data();
-          Store.set(this.todayKey(spreadDef.id), remote);
-          log('log', 'Day card already exists in Firestore, keeping remote version');
-          // Если карта отличается — обновляем UI
-          if (remote.cardName !== card.name || remote.isReversed !== isReversed) {
-            this._restoreDay(spreadDef);
-          }
+          // Другое устройство уже записало — берём его данные (first-write-wins)
+          const cloudData = snap.data();
+          Store.set(this.todayKey(spreadDef.id), cloudData);
+          log('log', 'Card of day already in cloud, keeping first draw');
         } else {
           docRef.set(todayData).catch(e => log('warn', 'Daily save error:', e.message));
         }
-      }).catch(e => {
-        // Если не удалось проверить — записываем на всякий случай
-        docRef.set(todayData).catch(e2 => log('warn', 'Daily save error:', e2.message));
-      });
+      }).catch(e => log('warn', 'Daily check error:', e.message));
     }
     this._setDayDrawnState();
     History.save({ spreadId: spreadDef.id, date: new Date().toLocaleDateString('ru-RU', { day:'numeric', month:'short' }), name: card.name + (isReversed ? ' ↩' : ''), symbol: card.symbol, ts: Date.now() });
@@ -1440,6 +1433,10 @@ const SpreadEngine = {
     const spreadDef = SPREAD_CATALOG.find(s => s.id === 'card_of_day');
     Store.remove(this.todayKey(spreadDef.id));
     Store.remove(CONFIG.storageKeys.dayPrefix + this.localDateStr()); // legacy ключ
+    if (window._uid) {
+      window.db.collection('users').doc(window._uid).collection('daily').doc(this.localDateStr())
+        .delete().catch(e => log('warn', 'Firestore daily reset error:', e.message));
+    }
     DOM.cardInner.style.transition = 'none';
     DOM.cardInner.classList.remove('flipped');
     requestAnimationFrame(() => { DOM.cardInner.style.transition = ''; });
