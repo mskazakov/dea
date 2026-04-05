@@ -356,6 +356,12 @@ auth.onAuthStateChanged(async (user) => {
     }
     if (typeof History !== 'undefined') History.render();
     if (typeof CardOfDay !== 'undefined') CardOfDay.restore();
+    // Синхронизируем колоду из облака
+    if (typeof DeckStore !== 'undefined') {
+      DeckStore.loadFromCloud().then(() => {
+        if (typeof DeckUI !== 'undefined') DeckUI.render();
+      });
+    }
   } else {
     window._uid = null;
     document.getElementById('drawerLoggedIn').style.display = 'none';
@@ -1252,10 +1258,24 @@ const SpreadEngine = {
   async startSpread(spreadDef, { question = '', aiEnabled = true } = {}) {
     if (this._isDrawing) return;
 
-    // Проверка dailyLimit
-    if (spreadDef.dailyLimit && Store.get(this.todayKey(spreadDef.id))) {
-      await this._restoreDay(spreadDef);
-      return;
+    // Проверка dailyLimit: localStorage + Firestore для залогиненных
+    if (spreadDef.dailyLimit) {
+      if (Store.get(this.todayKey(spreadDef.id))) {
+        await this._restoreDay(spreadDef);
+        return;
+      }
+      // Для залогиненных: проверяем Firestore (карта могла быть вытянута на другом устройстве)
+      if (window._uid) {
+        try {
+          const snap = await window.db.collection('users').doc(window._uid)
+            .collection('daily').doc(this.localDateStr()).get();
+          if (snap.exists) {
+            Store.set(this.todayKey(spreadDef.id), snap.data());
+            await this._restoreDay(spreadDef);
+            return;
+          }
+        } catch(e) { log('warn', 'Firestore daily check failed:', e.message); }
+      }
     }
 
     this._spreadDef = spreadDef;
@@ -1344,8 +1364,25 @@ const SpreadEngine = {
     const todayData = { cardName: card.name, isReversed, reading, reflection };
     Store.set(this.todayKey(spreadDef.id), todayData);
     if (window._uid) {
-      window.db.collection('users').doc(window._uid).collection('daily').doc(this.localDateStr())
-        .set(todayData).catch(e => log('warn', 'Daily save error:', e.message));
+      // First-write-wins: проверяем, не записало ли другое устройство раньше
+      const docRef = window.db.collection('users').doc(window._uid).collection('daily').doc(this.localDateStr());
+      docRef.get().then(snap => {
+        if (snap.exists) {
+          // Другое устройство уже записало — берём ту карту как правильную
+          const remote = snap.data();
+          Store.set(this.todayKey(spreadDef.id), remote);
+          log('log', 'Day card already exists in Firestore, keeping remote version');
+          // Если карта отличается — обновляем UI
+          if (remote.cardName !== card.name || remote.isReversed !== isReversed) {
+            this._restoreDay(spreadDef);
+          }
+        } else {
+          docRef.set(todayData).catch(e => log('warn', 'Daily save error:', e.message));
+        }
+      }).catch(e => {
+        // Если не удалось проверить — записываем на всякий случай
+        docRef.set(todayData).catch(e2 => log('warn', 'Daily save error:', e2.message));
+      });
     }
     this._setDayDrawnState();
     History.save({ spreadId: spreadDef.id, date: new Date().toLocaleDateString('ru-RU', { day:'numeric', month:'short' }), name: card.name + (isReversed ? ' ↩' : ''), symbol: card.symbol, ts: Date.now() });
@@ -1362,16 +1399,18 @@ const SpreadEngine = {
 
   // ─── Восстановить карту дня ──────────────────────────────────────────────────
   async _restoreDay(spreadDef) {
-    let saved = Store.get(this.todayKey(spreadDef.id));
-    // Пробуем legacy ключ (старый формат до рефакторинга)
-    if (!saved) saved = Store.get(CONFIG.storageKeys.dayPrefix + this.localDateStr());
-    if (!saved && window._uid) {
+    let saved = null;
+    // Для залогиненного пользователя Firestore = source of truth
+    if (window._uid) {
       try {
         const snap = await window.db.collection('users').doc(window._uid)
           .collection('daily').doc(this.localDateStr()).get();
         if (snap.exists) { saved = snap.data(); Store.set(this.todayKey(spreadDef.id), saved); }
-      } catch(e) {}
+      } catch(e) { log('warn', 'Firestore daily read failed:', e.message); }
     }
+    // Фоллбэк на localStorage
+    if (!saved) saved = Store.get(this.todayKey(spreadDef.id));
+    if (!saved) saved = Store.get(CONFIG.storageKeys.dayPrefix + this.localDateStr());
     if (!saved) return false;
     const deck = DeckStore.get();
     const card = deck.cards.find(c => c.name === saved.cardName) || MAJOR_ARCANA.find(c => c.name === saved.cardName);
