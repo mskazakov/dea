@@ -1925,6 +1925,7 @@ document.addEventListener('keydown', (e) => {
 
 // Card day lightbox: tap on flipped card opens lightbox
 DOM.cardArea && DOM.cardArea.addEventListener('click', (e) => {
+  alert('cardArea click! flipped=' + DOM.cardInner.classList.contains('flipped') + ' target=' + e.target.className);
   if (!DOM.cardInner.classList.contains('flipped')) return;
   if (e.target.closest('[data-action]')) return;
   const data = SpreadEngine._visibleDayCard;
