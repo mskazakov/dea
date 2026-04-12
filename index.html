@@ -1711,7 +1711,11 @@ const SpreadEngine = {
     el.classList.remove('face-down');
     const imgUrl = cardImageUrl(card);
     const revStyle = isReversed ? ' style="transform:rotate(180deg)"' : '';
-    el.innerHTML = '<div class="spread-mini-image-wrap"><img class="spread-mini-image"' + revStyle + ' src="' + imgUrl + '" alt="' + card.name + '" loading="lazy" onerror="this.parentElement.style.display=\'none\';this.parentElement.nextElementSibling.style.display=\'\'"></div><span class="spread-mini-image-fallback" style="display:none">' + card.symbol + '</span><div class="spread-mini-name">' + card.name + '</div>' + (isReversed ? '<div class="spread-mini-rev">перевёрнутая</div>' : '');
+    el.innerHTML = '<div class="spread-mini-image-wrap"><img class="spread-mini-image"' + revStyle + ' src="' + imgUrl + '" alt="' + card.name + '" loading="lazy" onerror="this.parentElement.style.display=\'none\';this.parentElement.nextElementSibling.style.display=\'\'"></div><span class="spread-mini-image-fallback" style="display:none">' + card.symbol + '</span><div class="spread-mini-name">' + card.name + '</div>';
+    // Badge outside card, in parent wrap
+    const existingBadge = el.parentElement.querySelector('.spread-mini-rev');
+    if (existingBadge) existingBadge.remove();
+    if (isReversed) el.parentElement.insertAdjacentHTML('beforeend', '<div class="spread-mini-rev">перевёрнутая</div>');
   },
 
   // ─── Рендер чтения без AI ────────────────────────────────────────────────────
