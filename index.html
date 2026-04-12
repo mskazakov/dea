@@ -295,6 +295,18 @@ h1 em { font-style: italic; color: var(--ink-muted); }
   .spread-cards-row { gap: 24px; }
   .spread-card-wrap { max-width: 180px; }
 }
+
+/* ═══ CARD LIGHTBOX ═══ */
+.card-lightbox { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.card-lightbox.open { display: flex; }
+.card-lightbox-inner { max-width: 360px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 16px; position: relative; }
+.card-lightbox-close { position: absolute; top: -40px; right: 0; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; opacity: 0.7; z-index: 1; }
+.card-lightbox-close:hover { opacity: 1; }
+.card-lightbox-img { width: 100%; border-radius: 16px; box-shadow: 0 12px 60px rgba(0,0,0,0.4); }
+.card-lightbox-name { font-family: var(--font-serif); font-size: 24px; color: #fff; text-align: center; }
+.card-lightbox-rev { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); opacity: 0.8; }
+.card-lightbox-keywords { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); text-align: center; opacity: 0.7; }
+.card-lightbox-interp { font-family: var(--font-serif); font-size: 15px; color: rgba(255,255,255,0.85); line-height: 1.6; text-align: center; max-width: 340px; }
 </style>
 
 <!-- Firebase: compat for auth, modular for Firestore (named DB support) -->
@@ -302,6 +314,17 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics-compat.js"></script>
+
+<div class="card-lightbox" id="cardLightbox" data-action="close-lightbox">
+  <div class="card-lightbox-inner" onclick="event.stopPropagation()">
+    <button class="card-lightbox-close" data-action="close-lightbox">✕</button>
+    <img class="card-lightbox-img" id="lightboxImg" alt="">
+    <div class="card-lightbox-name" id="lightboxName"></div>
+    <div class="card-lightbox-rev" id="lightboxRev" style="display:none">перевёрнутая</div>
+    <div class="card-lightbox-keywords" id="lightboxKeywords"></div>
+    <div class="card-lightbox-interp" id="lightboxInterp"></div>
+  </div>
+</div>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyDCzIHNyNedzxGMN251rS4qzI7lMMWGDlA",
@@ -724,7 +747,7 @@ const Validate = {
 // ═══════════════════════════════════════════════════════════════════════════════
 const DOM = {};
 function cacheDOM() {
-  ['drawBtn','cardInner','cardBack','readingArea','readingText','dateLabel','cardArea',
+  ['drawBtn','cardInner','cardBack','cardFront','readingArea','readingText','dateLabel','cardArea',
    'arcanaLabel','cardImage','cardSymbolFallback','cardName','cardReversedBadge','cardKeywords','resetMsg',
    'tabDay','tabSpread','spreadSection','spreadDropdownBtn','spreadDropdownMenu',
    'spreadDropdownTitle','spreadDropdownDesc','spreadHint','spreadQuestion','spreadDrawBtn',
@@ -1709,6 +1732,8 @@ const SpreadEngine = {
     const el = document.getElementById('spreadCard' + i);
     if (!el) return;
     el.classList.remove('face-down');
+    el.style.cursor = 'pointer';
+    el.onclick = () => CardLightbox.open(card, isReversed);
     const imgUrl = cardImageUrl(card);
     const revStyle = isReversed ? ' style="transform:rotate(180deg)"' : '';
     el.innerHTML = '<div class="spread-mini-image-wrap"><img class="spread-mini-image"' + revStyle + ' src="' + imgUrl + '" alt="' + card.name + '" loading="lazy" onerror="this.parentElement.style.display=\'none\';this.parentElement.nextElementSibling.style.display=\'\'"></div><span class="spread-mini-image-fallback" style="display:none">' + card.symbol + '</span><div class="spread-mini-name">' + card.name + '</div>';
@@ -1822,6 +1847,28 @@ const Spread = {
   },
 };
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CARD LIGHTBOX
+// ═══════════════════════════════════════════════════════════════════════════════
+const CardLightbox = {
+  open(card, isReversed) {
+    const el = document.getElementById('cardLightbox');
+    document.getElementById('lightboxImg').src = cardImageUrl(card);
+    document.getElementById('lightboxImg').style.transform = isReversed ? 'rotate(180deg)' : '';
+    document.getElementById('lightboxName').textContent = card.name;
+    document.getElementById('lightboxRev').style.display = isReversed ? '' : 'none';
+    document.getElementById('lightboxKeywords').textContent = card.keywords;
+    document.getElementById('lightboxInterp').textContent = card.interpretation || '';
+    el.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  },
+  close() {
+    document.getElementById('cardLightbox').classList.remove('open');
+    document.body.style.overflow = '';
+  },
+};
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // EVENT DELEGATION
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1850,6 +1897,7 @@ document.addEventListener('click', (e) => {
       Notify.show('Колода изменена: ' + DeckStore.get().name, 'success');
     },
     'google-signin':      () => window.signInWithGoogle(),
+    'close-lightbox':     () => CardLightbox.close(),
     'sign-out':           () => window.signOutUser(),
   };
   const fn = actions[target.dataset.action];
@@ -1862,8 +1910,14 @@ document.addEventListener('click', (e) => { if (DOM.spreadPicker && !DOM.spreadP
 // KEYBOARD ACCESSIBILITY
 // ═══════════════════════════════════════════════════════════════════════════════
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { if (DOM.deckDrawer.classList.contains('open')) DeckDrawer.close(); if (DOM.profileDrawer.classList.contains('open')) Profile.close(); if (DOM.spreadDropdownMenu.classList.contains('open')) Spread.closeDropdown(); }
+  if (e.key === 'Escape') { CardLightbox.close(); if (DOM.deckDrawer.classList.contains('open')) DeckDrawer.close(); if (DOM.profileDrawer.classList.contains('open')) Profile.close(); if (DOM.spreadDropdownMenu.classList.contains('open')) Spread.closeDropdown(); }
   if ((e.key === 'Enter' || e.key === ' ') && document.activeElement === DOM.cardBack) { e.preventDefault(); CardOfDay.draw(); }
+});
+
+// Card day lightbox: tap on flipped card opens lightbox
+DOM.cardFront && DOM.cardFront.addEventListener('click', () => {
+  const data = SpreadEngine._drawnCards && SpreadEngine._drawnCards[0];
+  if (data) CardLightbox.open(data.card, data.isReversed);
 });
 
 DOM.profileDrawer && DOM.profileDrawer.addEventListener('keydown', (e) => {
