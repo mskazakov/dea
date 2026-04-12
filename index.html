@@ -1496,7 +1496,7 @@ const SpreadEngine = {
   _finishDay(card, isReversed, reading, reflection) {
     const spreadDef = this._spreadDef;
     this._isDrawing = false;
-    const todayData = { cardName: card.name, isReversed, reading, reflection };
+    const todayData = { cardName: card.name, isReversed, reading, reflection, deckId: DeckStore.get().id };
     Store.set(this.todayKey(spreadDef.id), todayData);
     if (window._uid) {
       // First-write-wins: проверяем, не записало ли другое устройство раньше
@@ -1541,11 +1541,12 @@ const SpreadEngine = {
     if (!saved) saved = Store.get(this.todayKey(spreadDef.id));
     if (!saved) saved = Store.get(CONFIG.storageKeys.dayPrefix + this.localDateStr());
     if (!saved) return false;
-    const deck = DeckStore.get();
-    const card = deck.cards.find(c => c.name === saved.cardName) || MAJOR_ARCANA.find(c => c.name === saved.cardName);
+    const savedDeckId = saved.deckId || 'major_arcana';
+    const savedDeck = DECK_CATALOG.find(d => d.id === savedDeckId) || DeckStore.get();
+    const card = savedDeck.cards.find(c => c.name === saved.cardName) || MAJOR_ARCANA.find(c => c.name === saved.cardName);
     if (!card) return false;
-    this._visibleDayCard = { card, isReversed: saved.isReversed, deckId: DeckStore.get().id };
-    DOM.cardImage.src = cardImageUrl(card);
+    this._visibleDayCard = { card, isReversed: saved.isReversed, deckId: savedDeckId };
+    DOM.cardImage.src = CONFIG.cardImageBase + savedDeckId + '/' + card.id + '.webp';
     DOM.cardImage.alt = card.name;
     DOM.cardImage.parentElement.style.display = '';
     DOM.cardSymbolFallback.style.display = 'none';
