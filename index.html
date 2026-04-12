@@ -590,7 +590,7 @@ const CONFIG = {
 // CARD IMAGE HELPER
 // ═══════════════════════════════════════════════════════════════════════════════
 function cardImageUrl(card) {
-  const deckId = DeckStore ? DeckStore.activeDeckId : 'major_arcana';
+  const deckId = (DeckStore && DeckStore.get()) ? DeckStore.get().id : 'major_arcana';
   return CONFIG.cardImageBase + deckId + '/' + card.id + '.webp';
 }
 function cardImageHtml(card, cssClass, isReversed) {
