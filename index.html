@@ -1924,7 +1924,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Card day lightbox: tap on flipped card opens lightbox
-DOM.cardFront && DOM.cardFront.addEventListener('click', () => {
+DOM.cardFront && DOM.cardFront.addEventListener('click', (e) => {
+  console.log('[Dea] cardFront clicked', e.target, 'visibleDayCard:', SpreadEngine._visibleDayCard);
   const data = SpreadEngine._visibleDayCard;
   if (data) CardLightbox.open(data.card, data.isReversed);
 });
