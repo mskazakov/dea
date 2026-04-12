@@ -1723,7 +1723,8 @@ const SpreadEngine = {
       const slot = allSlots[i];
       return '<div class="spread-reading-card-block">'
         + '<div class="spread-reading-card-label">' + (slot ? slot.name : '') + '</div>'
-        + '<div class="spread-reading-card-name">' + card.name + (isReversed ? ' · перевёрнутая' : '') + '</div>'
+        + '<div class="spread-reading-card-name">' + card.name + '</div>'
+        + (isReversed ? '<div class="spread-mini-rev">перевёрнутая</div>' : '')
         + '<div class="spread-reading-card-text">' + (card.interpretation || card.keywords) + '</div>'
         + '</div>';
     }).join('');
@@ -1746,7 +1747,8 @@ const SpreadEngine = {
       if (!card) return '';
       return '<div class="spread-reading-card-block">'
         + '<div class="spread-reading-card-label">' + slot + '</div>'
-        + '<div class="spread-reading-card-name">' + card.name + (isReversed ? ' · перевёрнутая' : '') + '</div>'
+        + '<div class="spread-reading-card-name">' + card.name + '</div>'
+        + (isReversed ? '<div class="spread-mini-rev">перевёрнутая</div>' : '')
         + '<div class="spread-reading-card-text">' + text + '</div>'
         + '</div>';
     }).join('');
