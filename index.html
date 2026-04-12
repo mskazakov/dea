@@ -98,11 +98,16 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 .card-back-pattern svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.12; }
 .card-back-symbol { font-size: 48px; position: relative; z-index: 1; filter: drop-shadow(0 2px 8px rgba(184,153,106,0.3)); }
 
-.card-front { background: var(--surface); transform: rotateY(180deg); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 20px; gap: 12px; }
+.card-front { background: var(--surface); transform: rotateY(180deg); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 0; gap: 0; overflow: hidden; }
 .card-arcana-badge { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); font-family: var(--font-sans); }
 .card-symbol-large { font-size: 72px; line-height: 1; margin: 8px 0; }
 .card-name { font-family: var(--font-serif); font-size: 22px; font-weight: 400; text-align: center; line-height: 1.2; }
-.card-keywords { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); text-align: center; margin-top: 4px; }
+.card-keywords { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); text-align: center; margin-top: 2px; }
+.card-image { width: 100%; flex: 1; object-fit: cover; display: block; min-height: 0; }
+.card-image-fallback { font-size: 72px; line-height: 1; margin: 8px 0; }
+.card-front-info { padding: 10px 14px 14px; text-align: center; width: 100%; box-sizing: border-box; flex-shrink: 0; }
+.spread-mini-image { width: 100%; flex: 1; object-fit: cover; display: block; border-radius: 6px; min-height: 0; }
+.spread-mini-image-fallback { font-size: 36px; line-height: 1; }
 
 /* ═══ DRAW BUTTON ═══ */
 .draw-btn {
@@ -211,7 +216,7 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 .spread-cards-row { display: flex; gap: 14px; justify-content: center; margin-bottom: 32px; width: 100%; }
 .spread-card-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1; max-width: 160px; }
 .spread-card-slot-label { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); text-align: center; }
-.spread-mini-card { width: 100%; aspect-ratio: 220 / 380; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.07); perspective: 600px; }
+.spread-mini-card { width: 100%; aspect-ratio: 220 / 380; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; padding: 0; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.07); perspective: 600px; }
 .spread-mini-card.face-down { cursor: pointer; background: var(--surface); position: relative; overflow: hidden; }
 .spread-mini-card.face-down svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.1; }
 .spread-mini-card.face-down .mini-back-symbol { font-size: 28px; position: relative; z-index: 1; }
@@ -279,6 +284,7 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 @media (max-width: 360px) {
   :root { --card-w: 160px; --card-h: 276px; }
   .card-symbol-large { font-size: 56px; }
+  .card-image-fallback { font-size: 56px; }
   .card-name { font-size: 18px; }
   .spread-card-slot-label { font-size: 8px; }
 }
@@ -495,10 +501,13 @@ window.loadHistory = async function() {
       </div>
     </div>
     <div class="card-face card-front" id="cardFront">
-      <div class="card-arcana-badge" id="arcanaLabel"></div>
-      <div class="card-symbol-large" id="cardSymbol"></div>
-      <div class="card-name" id="cardName"></div>
-      <div class="card-keywords" id="cardKeywords"></div>
+      <img class="card-image" id="cardImage" alt="" loading="lazy" onerror="this.style.display='none';document.getElementById('cardSymbolFallback').style.display=''">
+      <div class="card-symbol-large" id="cardSymbolFallback" style="display:none"></div>
+      <div class="card-front-info">
+        <div class="card-arcana-badge" id="arcanaLabel"></div>
+        <div class="card-name" id="cardName"></div>
+        <div class="card-keywords" id="cardKeywords"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -569,12 +578,26 @@ const CONFIG = {
   apiMaxTokensSpread: 1200,
   apiTimeout: 25000,
   debug: false,
+  cardImageBase: 'cards/',
   storageKeys: {
     profile: 'tarot_profile',
     history: 'tarot_history',
     dayPrefix: 'tarot_day_',
   },
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CARD IMAGE HELPER
+// ═══════════════════════════════════════════════════════════════════════════════
+function cardImageUrl(card) {
+  const deckId = DeckStore ? DeckStore.activeDeckId : 'major_arcana';
+  return CONFIG.cardImageBase + deckId + '/' + card.id + '.webp';
+}
+function cardImageHtml(card, cssClass, isReversed) {
+  const url = cardImageUrl(card);
+  const revStyle = isReversed ? ' style="transform:rotate(180deg)"' : '';
+  return '<img class="' + cssClass + '" src="' + url + '" alt="' + card.name + '" loading="lazy"' + revStyle + ' onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'\'"><span class="' + cssClass + '-fallback" style="display:none">' + card.symbol + '</span>';
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // UTILITIES
@@ -696,7 +719,7 @@ const Validate = {
 const DOM = {};
 function cacheDOM() {
   ['drawBtn','cardInner','cardBack','readingArea','readingText','dateLabel','cardArea',
-   'arcanaLabel','cardSymbol','cardName','cardKeywords','resetMsg',
+   'arcanaLabel','cardImage','cardSymbolFallback','cardName','cardKeywords','resetMsg',
    'tabDay','tabSpread','spreadSection','spreadDropdownBtn','spreadDropdownMenu',
    'spreadDropdownTitle','spreadDropdownDesc','spreadHint','spreadQuestion','spreadDrawBtn',
    'spreadCardsRow','spreadReadingBox','spreadReadingContent','profileDrawer','drawerOverlay',
@@ -1380,8 +1403,14 @@ const SpreadEngine = {
   // ─── Рендер карты дня ────────────────────────────────────────────────────────
   async _renderDayPhase({ card, isReversed }) {
     const spreadDef = this._spreadDef;
-    DOM.arcanaLabel.textContent = 'Старший аркан · ' + (card.num || '');
-    DOM.cardSymbol.textContent = card.symbol;
+    DOM.cardImage.src = cardImageUrl(card);
+    DOM.cardImage.alt = card.name;
+    DOM.cardImage.style.display = '';
+    DOM.cardSymbolFallback.style.display = 'none';
+    DOM.cardSymbolFallback.textContent = card.symbol;
+    if (isReversed) DOM.cardImage.style.transform = 'rotate(180deg)';
+    else DOM.cardImage.style.transform = '';
+    DOM.arcanaLabel.textContent = (card.num ? 'Старший аркан · ' + card.num : '');
     DOM.cardName.textContent = card.name + (isReversed ? ' (перевёрнутая)' : '');
     DOM.cardKeywords.textContent = card.keywords;
     DOM.cardInner.classList.add('flipped');
@@ -1481,8 +1510,14 @@ const SpreadEngine = {
     const deck = DeckStore.get();
     const card = deck.cards.find(c => c.name === saved.cardName) || MAJOR_ARCANA.find(c => c.name === saved.cardName);
     if (!card) return false;
-    DOM.arcanaLabel.textContent = 'Старший аркан · ' + (card.num || '');
-    DOM.cardSymbol.textContent = card.symbol;
+    DOM.cardImage.src = cardImageUrl(card);
+    DOM.cardImage.alt = card.name;
+    DOM.cardImage.style.display = '';
+    DOM.cardSymbolFallback.style.display = 'none';
+    DOM.cardSymbolFallback.textContent = card.symbol;
+    if (saved.isReversed) DOM.cardImage.style.transform = 'rotate(180deg)';
+    else DOM.cardImage.style.transform = '';
+    DOM.arcanaLabel.textContent = (card.num ? 'Старший аркан · ' + card.num : '');
     DOM.cardName.textContent = card.name + (saved.isReversed ? ' (перевёрнутая)' : '');
     DOM.cardKeywords.textContent = card.keywords;
     DOM.cardInner.style.transition = 'none';
@@ -1666,7 +1701,9 @@ const SpreadEngine = {
     const el = document.getElementById('spreadCard' + i);
     if (!el) return;
     el.classList.remove('face-down');
-    el.innerHTML = '<div class="spread-mini-symbol" style="' + (isReversed ? 'transform:rotate(180deg)' : '') + '">' + card.symbol + '</div><div class="spread-mini-name">' + card.name + '</div>' + (isReversed ? '<div class="spread-mini-rev">перевёрнутая</div>' : '');
+    const imgUrl = cardImageUrl(card);
+    const revStyle = isReversed ? ' style="transform:rotate(180deg)"' : '';
+    el.innerHTML = '<img class="spread-mini-image"' + revStyle + ' src="' + imgUrl + '" alt="' + card.name + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'\'"><span class="spread-mini-image-fallback" style="display:none">' + card.symbol + '</span><div class="spread-mini-name">' + card.name + '</div>' + (isReversed ? '<div class="spread-mini-rev">перевёрнутая</div>' : '');
   },
 
   // ─── Рендер чтения без AI ────────────────────────────────────────────────────
