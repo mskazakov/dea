@@ -297,7 +297,7 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 }
 
 /* ═══ CARD LIGHTBOX ═══ */
-.card-lightbox { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.card-lightbox { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.85); display: none; align-items: flex-start; justify-content: center; padding: 48px 24px 24px; box-sizing: border-box; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .card-lightbox.open { display: flex; }
 .card-lightbox-inner { max-width: 360px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 16px; position: relative; }
 .card-lightbox-close { position: absolute; top: -40px; right: 0; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; opacity: 0.7; z-index: 1; }
@@ -317,7 +317,7 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 
 <div class="card-lightbox" id="cardLightbox" data-action="close-lightbox">
   <div class="card-lightbox-inner" onclick="event.stopPropagation()">
-    <button class="card-lightbox-close" data-action="close-lightbox">✕</button>
+    <button class="card-lightbox-close" id="lightboxClose">✕</button>
     <img class="card-lightbox-img" id="lightboxImg" alt="">
     <div class="card-lightbox-name" id="lightboxName"></div>
     <div class="card-lightbox-rev" id="lightboxRev" style="display:none">перевёрнутая</div>
@@ -1341,6 +1341,7 @@ const SpreadEngine = {
   // ─── Стейт сессии ────────────────────────────────────────────────────────────
   _spreadDef: null,      // текущий расклад
   _drawnCards: [],       // все вытянутые карты (накапливаются по фазам)
+  _visibleDayCard: null,  // текущая видимая карта дня для лайтбокса
   _phaseIndex: 0,        // текущая фаза
   _prevReading: '',      // текст предыдущей фазы для AI
   _question: '',         // вопрос пользователя
@@ -1431,6 +1432,7 @@ const SpreadEngine = {
 
   // ─── Рендер карты дня ────────────────────────────────────────────────────────
   async _renderDayPhase({ card, isReversed }) {
+    this._visibleDayCard = { card, isReversed };
     const spreadDef = this._spreadDef;
     DOM.cardImage.src = cardImageUrl(card);
     DOM.cardImage.alt = card.name;
@@ -1540,6 +1542,7 @@ const SpreadEngine = {
     const deck = DeckStore.get();
     const card = deck.cards.find(c => c.name === saved.cardName) || MAJOR_ARCANA.find(c => c.name === saved.cardName);
     if (!card) return false;
+    this._visibleDayCard = { card, isReversed: saved.isReversed };
     DOM.cardImage.src = cardImageUrl(card);
     DOM.cardImage.alt = card.name;
     DOM.cardImage.parentElement.style.display = '';
@@ -1867,7 +1870,11 @@ const CardLightbox = {
     document.getElementById('cardLightbox').classList.remove('open');
     document.body.style.overflow = '';
   },
+  init() {
+    document.getElementById('lightboxClose').addEventListener('click', (e) => { e.stopPropagation(); CardLightbox.close(); });
+  },
 };
+CardLightbox.init();
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // EVENT DELEGATION
@@ -1916,7 +1923,7 @@ document.addEventListener('keydown', (e) => {
 
 // Card day lightbox: tap on flipped card opens lightbox
 DOM.cardFront && DOM.cardFront.addEventListener('click', () => {
-  const data = SpreadEngine._drawnCards && SpreadEngine._drawnCards[0];
+  const data = SpreadEngine._visibleDayCard;
   if (data) CardLightbox.open(data.card, data.isReversed);
 });
 
