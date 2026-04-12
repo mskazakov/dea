@@ -90,6 +90,7 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 .card-area { position: relative; width: var(--card-w); height: var(--card-h); perspective: 1000px; margin-bottom: 40px; animation: fadeUp 0.8s 0.2s ease both; }
 .card-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1); }
 .card-inner.flipped { transform: rotateY(180deg); }
+.card-inner.flipped .card-back { pointer-events: none; }
 .card-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06); }
 
 .card-back { background: var(--surface); display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--border); transition: box-shadow 0.3s; }
@@ -98,6 +99,7 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 .card-back-pattern svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.12; }
 .card-back-symbol { font-size: 48px; position: relative; z-index: 1; filter: drop-shadow(0 2px 8px rgba(184,153,106,0.3)); }
 
+.card-inner.flipped .card-front { cursor: pointer; }
 .card-front { background: var(--surface); transform: rotateY(180deg); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 0; gap: 0; overflow: hidden; }
 .card-arcana-badge { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); font-family: var(--font-sans); }
 .card-symbol-large { font-size: 72px; line-height: 1; margin: 8px 0; }
