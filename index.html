@@ -1924,13 +1924,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Card day lightbox: tap on flipped card opens lightbox
-DOM.cardArea && DOM.cardArea.addEventListener('click', (e) => {
-  alert('cardArea click! flipped=' + DOM.cardInner.classList.contains('flipped') + ' target=' + e.target.className);
-  if (!DOM.cardInner.classList.contains('flipped')) return;
-  if (e.target.closest('[data-action]')) return;
-  const data = SpreadEngine._visibleDayCard;
-  if (data) CardLightbox.open(data.card, data.isReversed);
-});
+
 
 DOM.profileDrawer && DOM.profileDrawer.addEventListener('keydown', (e) => {
   if (e.key !== 'Tab') return;
@@ -1984,6 +1978,13 @@ const DeckUI = {
 const App = {
   init(opts = {}) {
     cacheDOM(); Notify.init();
+    // Card lightbox: tap on day card opens lightbox
+    DOM.cardArea && DOM.cardArea.addEventListener('click', (e) => {
+      if (!DOM.cardInner.classList.contains('flipped')) return;
+      if (e.target.closest('[data-action]')) return;
+      const data = SpreadEngine._visibleDayCard;
+      if (data) CardLightbox.open(data.card, data.isReversed);
+    });
     DOM.dateLabel.textContent = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
     if (!opts.skipProfile) {
       const profile = Profile.data;
