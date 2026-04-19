@@ -61,6 +61,38 @@ html.dark {
   --gold-light: #2a2318;
   --border: #2e2a25;
 }
+html.dark {
+  --fire-surface: #231815; --fire-light: #3a2420;
+  --earth-surface: #1a1e15; --earth-light: #2a3020;
+  --air-surface: #1c1a22; --air-light: #2a2835;
+  --water-surface: #151c1e; --water-light: #1e2e32;
+}
+
+/* Dark mode: onboard buttons */
+html.dark .ob-btn-next,
+html.dark .ob-btn-calc,
+html.dark .nc-unlock-btn { background: var(--gold); color: var(--bg); }
+html.dark .ob-btn-next:disabled { background: var(--border); color: var(--ink-muted); }
+html.dark .ob-input { background: var(--surface); border-color: var(--border); color: var(--ink); }
+html.dark .ob-gender-btn { background: var(--surface); border-color: var(--border); color: var(--ink-muted); }
+html.dark .ob-gender-btn.selected { border-color: var(--gold); color: var(--ink); background: rgba(201,169,122,0.08); }
+html.dark .ob-review-card { background: var(--surface); border-color: var(--border); }
+
+/* Dark mode: natal chart cards */
+html.dark .hero-card { color: var(--ink); }
+html.dark .hero-card .hc-sign,
+html.dark .hero-card .hc-label,
+html.dark .hero-card .hc-planet,
+html.dark .hero-card .hc-deg { color: var(--ink); }
+
+/* Dark mode: reveal, portrait, mirror */
+html.dark .nr-card { background: var(--surface); color: var(--ink); }
+html.dark .nc-portrait { background: var(--surface); border-color: var(--border); }
+html.dark .nc-mirror { background: var(--surface); border-color: var(--border); }
+html.dark .nc-sphere { background: var(--surface); border-color: var(--border); }
+html.dark .nc-about-card { background: var(--surface); border-color: var(--border); }
+html.dark .natal-reveal { background: rgba(17,15,12,0.85); }
+
 
 /* ═══ RESET & BASE ═══ */
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -888,9 +920,11 @@ window.loadHistory = async function() {
         <div class="natal-content">
           <div class="nc-divider"><div class="line"></div><div class="label">Твой портрет<span class="nc-free">free</span></div><div class="line"></div></div>
           <div class="nc-portrait"><div class="nc-body">
-            <div class="nc-star">✦</div>
-            <div class="nc-title">Твой портрет</div>
-            <div class="nc-text" id="natalPortraitText"><p style="color:var(--ink-muted);font-style:italic">AI-портрет будет сгенерирован на основе натальных данных...</p></div>
+            <div class="nc-mirror-header">
+              <div class="nc-mirror-icon">✦</div>
+              <div><div class="nc-mirror-title">Твой портрет</div><div class="nc-mirror-sub" id="natalPortraitSub">Синтез на основе всех планет</div></div>
+            </div>
+            <div class="nc-mirror-text" id="natalPortraitText" style="color:var(--ink-muted);font-style:italic">AI-портрет будет сгенерирован на основе натальных данных...</div>
           </div></div>
           <div class="nc-divider"><div class="line"></div><div class="label">Как тебя видят<span class="nc-free">free</span></div><div class="line"></div></div>
           <div class="nc-mirror"><div class="nc-body">
