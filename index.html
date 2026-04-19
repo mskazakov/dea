@@ -40,7 +40,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 48px 24px 80px;
+  padding: 32px 24px 80px;
 }
 
 body::before {
@@ -52,7 +52,7 @@ body::before {
 }
 
 /* ═══ HEADER ═══ */
-header { text-align: center; margin-bottom: 56px; animation: fadeUp 0.8s ease both; }
+header { text-align: center; margin-bottom: 28px; animation: fadeUp 0.8s ease both; }
 
 .date-label {
   font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.22em;
@@ -76,7 +76,7 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 /* ═══ MODE TABS ═══ */
 .mode-tabs {
   display: flex; gap: 0; border: 1px solid var(--border); border-radius: var(--radius-pill);
-  padding: 4px; margin-bottom: 40px; animation: fadeUp 0.8s 0.1s ease both; background: var(--surface);
+  padding: 4px; margin-bottom: 24px; animation: fadeUp 0.8s 0.1s ease both; background: var(--surface);
 }
 .mode-tab {
   padding: 10px 28px; border-radius: 32px; border: none; background: none;
@@ -87,7 +87,7 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 .mode-tab.active { background: var(--ink); color: #fff; }
 
 /* ═══ CARD ═══ */
-.card-area { position: relative; width: var(--card-w); height: var(--card-h); perspective: 1000px; margin-bottom: 40px; animation: fadeUp 0.8s 0.2s ease both; }
+.card-area { position: relative; width: var(--card-w); height: var(--card-h); perspective: 1000px; margin-bottom: 20px; animation: fadeUp 0.8s 0.2s ease both; }
 .card-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1); }
 .card-inner.flipped { transform: rotateY(180deg); }
 .card-inner.flipped .card-back { pointer-events: none; visibility: hidden; }
@@ -116,14 +116,25 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 
 /* ═══ DRAW BUTTON ═══ */
 .draw-btn {
-  display: flex; align-items: center; gap: 10px; background: none; border: 1px solid var(--gold);
-  color: var(--ink); font-family: var(--font-sans); font-weight: 300; font-size: 12px;
-  letter-spacing: 0.18em; text-transform: uppercase; padding: 14px 32px;
-  border-radius: var(--radius-pill); cursor: pointer; transition: background 0.25s, color 0.25s;
-  animation: fadeUp 0.8s 0.35s ease both; margin-bottom: 48px;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--ink); border: none;
+  color: #f7f4ef; font-family: var(--font-sans); font-weight: 300; font-size: 12px;
+  letter-spacing: 0.18em; text-transform: uppercase; padding: 16px 40px;
+  border-radius: var(--radius-pill); cursor: pointer;
+  transition: opacity 0.25s, box-shadow 0.25s, transform 0.15s;
+  animation: fadeUp 0.8s 0.35s ease both, btnGlow 3s 1.5s ease-in-out infinite;
+  margin-bottom: 36px;
+  box-shadow: 0 4px 20px rgba(26,24,20,0.18);
 }
-.draw-btn:hover { background: var(--gold); color: #fff; }
-.draw-btn:disabled { opacity: 0.4; cursor: default; }
+.draw-btn .btn-star { color: var(--gold); }
+.draw-btn:hover { opacity: 0.85; transform: translateY(-1px); box-shadow: 0 8px 32px rgba(26,24,20,0.22); animation: none; }
+.draw-btn:active { transform: translateY(0); }
+.draw-btn:disabled { background: var(--border); color: var(--ink-muted); box-shadow: none; cursor: default; animation: none; opacity: 1; }
+.draw-btn:disabled .btn-star { color: var(--ink-muted); }
+@keyframes btnGlow {
+  0%, 100% { box-shadow: 0 4px 20px rgba(26,24,20,0.18); }
+  50% { box-shadow: 0 4px 28px rgba(184,153,106,0.35), 0 0 0 4px rgba(184,153,106,0.08); }
+}
 
 /* ═══ READING ═══ */
 .reading-area { max-width: 560px; width: 100%; animation: fadeUp 0.8s ease both; }
@@ -143,12 +154,15 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 .api-notice a:hover { text-decoration: underline; }
 
 /* ═══ PROFILE DRAWER ═══ */
-.profile-icon-btn { position: fixed; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 200; transition: border-color 0.2s, box-shadow 0.2s; padding: 0; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
-.profile-icon-btn:hover { border-color: var(--gold); }
-.profile-icon-btn img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: none; }
-.profile-icon-btn .profile-icon-placeholder { font-size: 16px; color: var(--ink-muted); }
-.deck-icon-btn { position: fixed; top: 68px; right: 20px; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 200; transition: border-color 0.3s, box-shadow 0.3s; padding: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.07); font-size: 18px; line-height: 1; }
-.deck-icon-btn:hover { border-color: var(--gold); }
+.profile-icon-btn { position: fixed; top: 20px; right: 20px; height: 36px; min-width: 36px; border-radius: 36px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 200; transition: border-color 0.2s, box-shadow 0.2s; padding: 0 12px 0 9px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+.profile-icon-btn:hover { border-color: var(--gold); box-shadow: 0 4px 14px rgba(184,153,106,0.15); }
+.profile-icon-btn img { width: 22px; height: 22px; object-fit: cover; border-radius: 50%; display: none; }
+.profile-icon-btn .profile-icon-svg { display: flex; align-items: center; justify-content: center; color: var(--ink-muted); flex-shrink: 0; }
+.profile-icon-btn .profile-icon-label { font-family: var(--font-sans); font-size: 11px; font-weight: 300; letter-spacing: 0.08em; color: var(--ink-muted); white-space: nowrap; }
+.deck-icon-btn { position: fixed; top: 64px; right: 20px; height: 36px; border-radius: 36px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; display: flex; align-items: center; gap: 6px; z-index: 200; transition: border-color 0.3s, box-shadow 0.3s; padding: 0 12px 0 9px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+.deck-icon-btn:hover { border-color: var(--gold); box-shadow: 0 4px 14px rgba(184,153,106,0.15); }
+.deck-icon-btn .deck-btn-icon { display: flex; align-items: center; color: var(--ink-muted); }
+.deck-icon-btn .deck-btn-label { font-family: var(--font-sans); font-size: 11px; font-weight: 300; letter-spacing: 0.08em; color: var(--ink-muted); white-space: nowrap; }
 .deck-drawer-overlay { position: fixed; inset: 0; background: rgba(26,24,20,0.3); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
 .deck-drawer-overlay.open { opacity: 1; pointer-events: all; }
 .deck-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 92vw); background: var(--surface); z-index: 301; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; box-shadow: -8px 0 40px rgba(0,0,0,0.10); overflow-y: auto; }
@@ -309,6 +323,27 @@ h1 em { font-style: italic; color: var(--ink-muted); }
 .card-lightbox-rev { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); opacity: 0.8; }
 .card-lightbox-keywords { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); text-align: center; opacity: 0.7; }
 .card-lightbox-interp { font-family: var(--font-serif); font-size: 15px; color: rgba(255,255,255,0.85); line-height: 1.6; text-align: center; max-width: 340px; }
+
+/* ═══ READING SLIDE-IN ═══ */
+.reading-area.slide-in { animation: readingSlideUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes readingSlideUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Scroll hint arrow */
+.scroll-hint {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  margin-top: -24px; margin-bottom: 20px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+.scroll-hint.visible { opacity: 1; pointer-events: auto; animation: arrowBounce 1.3s ease-in-out infinite; }
+.scroll-hint.gone { opacity: 0 !important; pointer-events: none; animation: none; }
+.scroll-hint svg { color: var(--gold); }
+.scroll-hint span { font-family: var(--font-sans); font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); }
+@keyframes arrowBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(7px); } }
+
+/* API notice — dev only */
+.api-notice { display: none; }
+.api-notice.dev-visible { display: block; }
 </style>
 
 <!-- Firebase: compat for auth, modular for Firestore (named DB support) -->
@@ -440,10 +475,25 @@ window.loadHistory = async function() {
 <div id="appWrap" style="width:100%; display:flex; flex-direction:column; align-items:center;">
 
 <button class="profile-icon-btn" id="profileIconBtn" data-action="open-drawer" aria-label="Открыть профиль" data-testid="profile-btn">
-  <img id="userAvatar" src="" alt=""><span class="profile-icon-placeholder">◎</span>
+  <img id="userAvatar" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" style="display:none">
+  <span class="profile-icon-svg">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="7.5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2"></circle>
+      <path d="M2 13c0-2.21 2.462-4 5.5-4s5.5 1.79 5.5 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>
+    </svg>
+  </span>
+  <span class="profile-icon-label" id="profileBtnLabel">Войти</span>
 </button>
 
-<button class="deck-icon-btn" id="deckIconBtn" data-action="open-deck-drawer" aria-label="Выбрать колоду" data-testid="deck-btn">🂠</button>
+<button class="deck-icon-btn" id="deckIconBtn" data-action="open-deck-drawer" aria-label="Выбрать колоду" data-testid="deck-btn">
+  <span class="deck-btn-icon">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="3" width="9" height="10" rx="1.5" stroke="currentColor" stroke-width="1.1"></rect>
+      <path d="M4 2.5A1.5 1.5 0 0 1 5.5 1h7A1.5 1.5 0 0 1 14 2.5v8A1.5 1.5 0 0 1 12.5 11H11" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"></path>
+    </svg>
+  </span>
+  <span class="deck-btn-label">Колоды</span>
+</button>
 
 <div class="deck-drawer-overlay" id="deckDrawerOverlay" data-action="close-deck-drawer" aria-hidden="true"></div>
 <div class="deck-drawer" id="deckDrawer" role="dialog" aria-modal="true" aria-label="Колода" data-testid="deck-drawer">
@@ -479,7 +529,7 @@ window.loadHistory = async function() {
   </div>
   <div id="drawerLoggedIn" style="display:none">
     <div class="drawer-user">
-      <img id="drawerAvatar" src="" alt="">
+      <img id="drawerAvatar" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" style="display:none">
       <div class="drawer-user-info"><span class="drawer-user-name" id="drawerUserName"></span><span class="drawer-user-email" id="drawerUserEmail"></span></div>
       <button class="drawer-signout" data-action="sign-out">Выйти</button>
     </div>
@@ -543,7 +593,13 @@ window.loadHistory = async function() {
   </div>
 </div>
 
-<button class="draw-btn" id="drawBtn" data-action="draw-card" data-testid="draw-card-btn"><span>✦</span><span>Вытянуть карту</span></button>
+<button class="draw-btn" id="drawBtn" data-action="draw-card" data-testid="draw-card-btn"><span class="btn-star">✦</span><span>Вытянуть карту дня</span></button>
+<div class="scroll-hint" id="scrollHint">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 2v12M3.5 9.5 8 14l4.5-4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path>
+  </svg>
+  <span>Читай предсказание</span>
+</div>
 
 <div class="reading-area" id="readingArea" style="display:none" data-testid="reading-area">
   <div class="reading-box"><div class="reading-title">Послание дня</div><div class="reading-text" id="readingText"></div></div>
@@ -2002,5 +2058,76 @@ cacheDOM();
 App.init();
 </script>
 </div>
+<!-- ═══ UX PATCHES ═══ -->
+<script>
+(function() {
+
+  // Profile button: hide label when logged in
+  if (typeof auth !== 'undefined') {
+    auth.onAuthStateChanged(user => {
+      const btn    = document.getElementById('profileIconBtn');
+      const lbl    = document.getElementById('profileBtnLabel');
+      const avatar = document.getElementById('userAvatar');
+      const ph     = btn && btn.querySelector('.profile-icon-svg');
+      if (user) {
+        if (lbl) lbl.style.display = 'none';
+        if (user.photoURL && avatar) {
+          avatar.src = user.photoURL;
+          avatar.style.display = 'block';
+          if (ph) ph.style.display = 'none';
+        }
+      } else {
+        if (lbl) { lbl.style.display = ''; lbl.textContent = 'Войти'; }
+        if (avatar) avatar.style.display = 'none';
+        if (ph) ph.style.display = '';
+      }
+    });
+  }
+
+  // Scroll hint + auto-scroll to reading
+  const scrollHint  = document.getElementById('scrollHint');
+  const readingArea = document.getElementById('readingArea');
+
+  function showScrollHint() {
+    if (!scrollHint) return;
+    scrollHint.classList.add('visible');
+    scrollHint.style.cursor = 'pointer';
+    scrollHint.onclick = () => {
+      if (!readingArea) return;
+      const top = readingArea.getBoundingClientRect().top + window.scrollY - 20;
+      window.scrollTo({ top, behavior: 'smooth' });
+      scrollHint.classList.add('gone');
+    };
+    setTimeout(() => scrollHint.classList.add('gone'), 5000);
+  }
+
+  if (typeof SpreadEngine !== 'undefined') {
+    const _origFinish = SpreadEngine._finishDay.bind(SpreadEngine);
+    SpreadEngine._finishDay = function(card, isReversed, reading, reflection) {
+      _origFinish(card, isReversed, reading, reflection);
+      if (readingArea) {
+        readingArea.classList.add('slide-in');
+        setTimeout(() => {
+          const top = readingArea.getBoundingClientRect().top + window.scrollY - 20;
+          window.scrollTo({ top, behavior: 'smooth' });
+        }, 150);
+      }
+      if (scrollHint) scrollHint.classList.add('gone');
+    };
+
+    if (typeof Events !== 'undefined') {
+      Events.on('card:drawn', () => setTimeout(showScrollHint, 1400));
+    }
+  }
+
+  // API notice: dev only
+  const isDevMode = location.search.includes('dev=1') ||
+                    location.hostname === 'localhost' ||
+                    location.hostname === '127.0.0.1';
+  const apiNotice = document.getElementById('apiNotice');
+  if (apiNotice && isDevMode) apiNotice.classList.add('dev-visible');
+
+})();
+</script>
 </body>
 </html>
