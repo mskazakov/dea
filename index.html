@@ -734,6 +734,7 @@ auth.onAuthStateChanged(async (user) => {
         // Load natal chart if exists
         if (typeof NatalChart !== 'undefined' && NatalChart.loadFromFirestore(snap.data())) {
           NatalChart.renderChart();
+          // Don't auto-switch to profile — user stays on current tab
         }
       } else {
         const local = Store.get(CONFIG.storageKeys.profile);
@@ -1756,10 +1757,12 @@ const API = {
 const UI = {
   switchMode(mode) {
     const isDay = mode === 'day';
-    // Day elements
+    // Day elements — hide ALL when not day mode
     ['cardArea','readingArea'].forEach(id => { if (DOM[id]) DOM[id].style.display = isDay ? '' : 'none'; });
-    const dayTimerEl = document.getElementById('dayTimer'); if (dayTimerEl) dayTimerEl.style.display = (isDay && DOM.drawBtn.disabled) ? 'block' : 'none';
+    if (DOM.drawBtn) DOM.drawBtn.style.display = isDay ? '' : 'none';
+    const dayTimerEl = document.getElementById('dayTimer'); if (dayTimerEl) dayTimerEl.style.display = (isDay && DOM.drawBtn && DOM.drawBtn.disabled) ? 'block' : 'none';
     const scrollHintEl = document.getElementById('scrollHint'); if (scrollHintEl) { if (!isDay) { scrollHintEl.classList.add('gone'); scrollHintEl.style.display = 'none'; } else { scrollHintEl.style.display = ''; } }
+    const apiNotice = document.getElementById('apiNotice'); if (apiNotice) apiNotice.style.display = isDay ? '' : 'none';
     // Spread
     DOM.spreadSection.classList.toggle('visible', mode === 'spread');
     if (mode === 'spread') Spread.updateHint();
@@ -2625,8 +2628,6 @@ const NatalChart = {
   async calculate() {
     const btn = document.getElementById('obCalcBtn');
     if (btn) btn.disabled = true;
-    const lo = document.getElementById('natalLoading');
-    if (lo) lo.classList.add('visible');
 
     const s = this._state;
     const [y, m, d] = s.date.split('-').map(Number);
@@ -2639,7 +2640,6 @@ const NatalChart = {
         body: JSON.stringify({ year: y, month: m, day: d, hour, minute, latitude: s.lat, longitude: s.lng }),
       });
       this._data = await res.json();
-      if (lo) lo.classList.remove('visible');
 
       // Save to Firestore
       await this._saveToFirestore(y, m, d, hour, minute);
@@ -2652,7 +2652,6 @@ const NatalChart = {
       // Generate AI texts (async, non-blocking for chart display)
       this._generateAI();
     } catch (e) {
-      if (lo) lo.classList.remove('visible');
       if (btn) btn.disabled = false;
       Notify.show('Ошибка расчёта: ' + e.message, 'error');
     }
@@ -2711,19 +2710,25 @@ const NatalChart = {
 
     let schema;
     if (hasAsc) {
-      schema = '{"portrait":"3 абзаца: кто этот человек внутри. Учти все планеты. Без перечисления планет.","mirror":"1 абзац: какое впечатление производит, как видят другие. На основе AC+♀+♂.","mirrorTraits":["4 черты в формате trait:element где element=fire/water/air/earth"],"sun":"3-4 предложения: Солнце, ядро личности.","moon":"3-4 предложения: Луна, эмоции и потребности.","asc":"3-4 предложения: Асцендент, маска и первое впечатление."}';
+      schema = '{"portrait":"3 абзаца, обращайся на ты: кто ты внутри, как устроена. Учти ВСЕ планеты но НЕ перечисляй их. Рисуй конкретные узнаваемые ситуации из жизни.","mirror":"1 абзац на ты: какое первое впечатление ты производишь. Конкретные примеры поведения, не абстракции. На основе AC+\u2640+\u2642.","mirrorTraits":["4 штуки в формате trait:element, element=fire/water/air/earth"],"sun":"3-4 предложения на ты: твоё Солнце, ядро.","moon":"3-4 предложения на ты: твоя Луна, эмоции.","asc":"3-4 предложения на ты: твой Асцендент, маска."}';
     } else {
-      schema = '{"portrait":"3 абзаца: кто этот человек внутри. Учти все планеты. Без перечисления планет.","sun":"3-4 предложения: Солнце, ядро личности.","moon":"3-4 предложения: Луна, эмоции и потребности."}';
+      schema = '{"portrait":"3 абзаца, обращайся на ты: кто ты внутри, как устроена. Учти ВСЕ планеты но НЕ перечисляй их. Рисуй конкретные узнаваемые ситуации из жизни.","sun":"3-4 предложения на ты: твоё Солнце, ядро.","moon":"3-4 предложения на ты: твоя Луна, эмоции."}';
     }
 
-    return 'Натальная карта. ' + s.name + ', ' + gender + '.\n' + planets + '\n\nОтветь ТОЛЬКО валидным JSON без markdown:\n' + schema + '\n\nПо-русски, на ты, ' + gender + ' род. Без эзотерического жаргона. Тёплый тон, как хороший гороскоп.';
+    const tone = 'Стиль: поэтичный но понятный, как хороший гороскоп. Без эзотерического жаргона — никаких «фиксированный знак», «водная стихия», «трансформативная энергия». Переводи астрологию на язык чувств и повседневных ситуаций. Пиши так, чтобы человек узнал себя и подумал «блин, точно». По-русски, на ты, ' + gender + ' род.';
+
+    return s.name + ', ' + gender + '. ' + planets + '\n\n' + tone + '\n\nОтветь ТОЛЬКО валидным JSON:\n' + schema;
   },
 
   async _generateAI() {
-    const lo = document.getElementById('natalLoading');
-    const lt = lo?.querySelector('.natal-loading-text');
-    if (lt) lt.textContent = 'Составляю портрет...';
-    if (lo) lo.classList.add('visible');
+    // Show inline loading in portrait and mirror blocks (non-blocking)
+    const portEl = document.getElementById('natalPortraitText');
+    const mirEl = document.getElementById('natalMirrorText');
+    if (portEl) { portEl.style.color = 'var(--ink-muted)'; portEl.style.fontStyle = 'italic'; portEl.innerHTML = '<span class="loading-phrase">Составляю портрет...</span>'; }
+    if (mirEl && this._data.ascendant) { mirEl.style.color = 'var(--ink-muted)'; mirEl.style.fontStyle = 'italic'; mirEl.innerHTML = '<span class="loading-phrase">Читаю первое впечатление...</span>'; }
+
+    // Start phrase rotation if LoadingRotator available
+    if (typeof LoadingRotator !== 'undefined' && portEl) LoadingRotator.start(portEl);
 
     const prompt = this._buildAIPrompt();
     const hasAsc = !!this._data.ascendant;
@@ -2735,13 +2740,14 @@ const NatalChart = {
       // Parse JSON — handle possible markdown wrapping
       let clean = raw.trim();
       if (clean.startsWith('```')) clean = clean.replace(/```json?\s*/g, '').replace(/```\s*$/g, '').trim();
-      // Find first { and last }
       const start = clean.indexOf('{');
       const end = clean.lastIndexOf('}');
       if (start === -1 || end === -1) throw new Error('Не удалось найти JSON');
       clean = clean.substring(start, end + 1);
 
       this._aiTexts = JSON.parse(clean);
+
+      if (typeof LoadingRotator !== 'undefined') LoadingRotator.stop();
 
       // Save to Firestore
       const uid = window._uid;
@@ -2751,12 +2757,12 @@ const NatalChart = {
         } catch (e) { log('warn', 'AI texts Firestore save error:', e); }
       }
 
-      if (lo) lo.classList.remove('visible');
       this._applyAITexts();
     } catch (e) {
-      if (lo) lo.classList.remove('visible');
+      if (typeof LoadingRotator !== 'undefined') LoadingRotator.stop();
       log('warn', 'AI generation error:', e);
-      Notify.show('Карта рассчитана, но AI-портрет не удался', 'info');
+      if (portEl) { portEl.style.color = 'var(--ink-muted)'; portEl.innerHTML = 'Не удалось сгенерировать портрет. Попробуй позже.'; }
+      Notify.show('AI-портрет не удался — карта рассчитана', 'info');
     }
   },
 
