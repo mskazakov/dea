@@ -684,7 +684,7 @@ auth.onAuthStateChanged(async (user) => {
     document.getElementById('drawerLoggedOut').style.display = 'none';
     document.getElementById('drawerUserName').textContent = user.displayName || '';
     document.getElementById('drawerUserEmail').textContent = user.email || '';
-    const nameField = document.getElementById('userName');
+    const nameField = document.getElementById('obName') || document.getElementById('userName');
     if (nameField && !nameField.value && user.displayName) nameField.value = user.displayName.split(' ')[0];
     if (user.photoURL) {
       document.getElementById('userAvatar').src = user.photoURL;
@@ -699,6 +699,10 @@ auth.onAuthStateChanged(async (user) => {
       const snap = await window.db.collection('users').doc(user.uid).get();
       if (snap.exists) {
         Profile.applyToUI(snap.data());
+        // Load natal chart if exists
+        if (typeof NatalChart !== 'undefined' && NatalChart.loadFromFirestore(snap.data())) {
+          NatalChart.renderChart();
+        }
       } else {
         const local = Store.get(CONFIG.storageKeys.profile);
         if (local) {
@@ -1442,19 +1446,19 @@ const Profile = {
     this._data = this._fromFlat(data);
     Store.set(CONFIG.storageKeys.profile, this._data);
     const flat = this._toFlat(this._data);
-    if (flat.date) DOM.birthDate.value = flat.date;
-    if (flat.time) DOM.birthTime.value = flat.time;
-    if (flat.place) DOM.birthPlace.value = flat.place;
-    if (this._data.name) DOM.userName.value = this._data.name;
-    if (this._data.gender) DOM.userGender.value = this._data.gender;
+    if (flat.date && DOM.birthDate) DOM.birthDate.value = flat.date;
+    if (flat.time && DOM.birthTime) DOM.birthTime.value = flat.time;
+    if (flat.place && DOM.birthPlace) DOM.birthPlace.value = flat.place;
+    if (this._data.name && DOM.userName) DOM.userName.value = this._data.name;
+    if (this._data.gender && DOM.userGender) DOM.userGender.value = this._data.gender;
     this.updateBadge();
   },
 
   async save() {
     const nc = Validate.name(DOM.userName.value), dc = Validate.date(DOM.birthDate.value), tc = Validate.time(DOM.birthTime.value);
-    DOM.userName.classList.toggle('invalid', !nc.valid);
-    DOM.birthDate.classList.toggle('invalid', !dc.valid);
-    DOM.birthTime.classList.toggle('invalid', !tc.valid);
+    if (DOM.userName) DOM.userName.classList.toggle('invalid', !nc.valid);
+    if (DOM.birthDate) DOM.birthDate.classList.toggle('invalid', !dc.valid);
+    if (DOM.birthTime) DOM.birthTime.classList.toggle('invalid', !tc.valid);
     if (!nc.valid) { Notify.show(nc.error, 'error'); return; }
     if (!dc.valid) { Notify.show(dc.error, 'error'); return; }
     if (!tc.valid) { Notify.show(tc.error, 'error'); return; }
@@ -1474,8 +1478,8 @@ const Profile = {
     } else {
       Notify.show('Войди через Google чтобы данные синхронизировались', 'info');
     }
-    DOM.profileSavedMsg.style.display = 'inline-block';
-    setTimeout(() => { DOM.profileSavedMsg.style.display = 'none'; }, 3000);
+    if (DOM.profileSavedMsg) DOM.profileSavedMsg.style.display = 'inline-block';
+    setTimeout(() => { if (DOM.profileSavedMsg) DOM.profileSavedMsg.style.display = 'none'; }, 3000);
     this.updateBadge();
     Events.emit('profile:saved', data);
   },
@@ -2348,6 +2352,14 @@ document.addEventListener('click', (e) => {
     'google-signin':      () => window.signInWithGoogle(),
     'close-lightbox':     () => CardLightbox.close(),
     'sign-out':           () => window.signOutUser(),
+    'ob-gender':          () => NatalChart.selectGender(target.dataset.gender),
+    'ob-next':            () => NatalChart.obGo(parseInt(target.dataset.step)),
+    'ob-back':            () => NatalChart.obGo(parseInt(target.dataset.step)),
+    'ob-calculate':       () => NatalChart.calculate(),
+    'natal-subtab':       () => NatalChart.showSubtab(target.dataset.sub),
+    'natal-reveal-open':  () => NatalChart.openReveal(parseInt(target.dataset.idx)),
+    'natal-reveal-close': () => NatalChart.closeReveal(),
+    'natal-reset':        () => NatalChart.reset(),
   };
   const fn = actions[target.dataset.action];
   if (fn) fn();
@@ -2359,7 +2371,7 @@ document.addEventListener('click', (e) => { if (DOM.spreadPicker && !DOM.spreadP
 // KEYBOARD ACCESSIBILITY
 // ═══════════════════════════════════════════════════════════════════════════════
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { CardLightbox.close(); if (DOM.spreadDropdownMenu.classList.contains('open')) Spread.closeDropdown(); }
+  if (e.key === 'Escape') { NatalChart.closeReveal(); CardLightbox.close(); if (DOM.spreadDropdownMenu.classList.contains('open')) Spread.closeDropdown(); }
   if ((e.key === 'Enter' || e.key === ' ') && document.activeElement === DOM.cardBack) { e.preventDefault(); CardOfDay.draw(); }
 });
 
@@ -2405,9 +2417,400 @@ const DeckUI = {
 // ═══════════════════════════════════════════════════════════════════════════════
 // APP INIT
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NATAL CHART — onboarding, calculation, display
+// ═══════════════════════════════════════════════════════════════════════════════
+const NatalChart = {
+  _state: { name:'', gender:'', date:'', time:'', noTime:false, place:'', lat:null, lng:null },
+  _data: null, // { planets, ascendant }
+  _revealData: [],
+  _obStep: 1,
+  _searchTimeout: null,
+  _MONTHS: ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'],
+  _SIGNS: {
+    aries:{ru:'Овен',symbol:'♈',element:'fire',elRu:'огонь'},taurus:{ru:'Телец',symbol:'♉',element:'earth',elRu:'земля'},
+    gemini:{ru:'Близнецы',symbol:'♊',element:'air',elRu:'воздух'},cancer:{ru:'Рак',symbol:'♋',element:'water',elRu:'вода'},
+    leo:{ru:'Лев',symbol:'♌',element:'fire',elRu:'огонь'},virgo:{ru:'Дева',symbol:'♍',element:'earth',elRu:'земля'},
+    libra:{ru:'Весы',symbol:'♎',element:'air',elRu:'воздух'},scorpio:{ru:'Скорпион',symbol:'♏',element:'water',elRu:'вода'},
+    sagittarius:{ru:'Стрелец',symbol:'♐',element:'fire',elRu:'огонь'},capricorn:{ru:'Козерог',symbol:'♑',element:'earth',elRu:'земля'},
+    aquarius:{ru:'Водолей',symbol:'♒',element:'air',elRu:'воздух'},pisces:{ru:'Рыбы',symbol:'♓',element:'water',elRu:'вода'},
+  },
+  _PLANETS: {
+    sun:{symbol:'☉',ru:'Солнце'},moon:{symbol:'☽',ru:'Луна'},mercury:{symbol:'☿',ru:'Меркурий'},
+    venus:{symbol:'♀',ru:'Венера'},mars:{symbol:'♂',ru:'Марс'},jupiter:{symbol:'♃',ru:'Юпитер'},saturn:{symbol:'♄',ru:'Сатурн'},
+  },
+  _QS: {
+    female:{q2:'Когда ты родилась?',q3:'Во сколько ты родилась?',q4:'Где ты родилась?'},
+    male:{q2:'Когда ты родился?',q3:'Во сколько ты родился?',q4:'Где ты родился?'},
+  },
+
+  init() {
+    // input listeners
+    const nameEl = document.getElementById('obName');
+    const dateEl = document.getElementById('obDate');
+    const timeEl = document.getElementById('obTime');
+    const placeEl = document.getElementById('obPlace');
+    const noTimeEl = document.getElementById('obNoTime');
+    if (nameEl) nameEl.addEventListener('input', e => { this._state.name = e.target.value; this._validate(); });
+    if (dateEl) dateEl.addEventListener('change', e => { this._state.date = e.target.value; this._validate(); });
+    if (timeEl) timeEl.addEventListener('change', e => { this._state.time = e.target.value; this._validate(); });
+    if (noTimeEl) noTimeEl.addEventListener('change', () => this._toggleTime());
+    if (placeEl) placeEl.addEventListener('input', e => {
+      this._state.lat = null; this._state.lng = null;
+      const pc = document.getElementById('obPlaceConfirm');
+      if (pc) pc.classList.remove('visible');
+      this._validate();
+      this._searchPlace(e.target.value);
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.ob-ac-wrap')) {
+        const list = document.getElementById('obPlaceList');
+        if (list) list.classList.remove('open');
+      }
+    });
+    // dev mode
+    if (new URLSearchParams(window.location.search).has('dev')) {
+      const rb = document.getElementById('natalResetBtn');
+      if (rb) rb.style.display = 'block';
+    }
+  },
+
+  // ─── Onboarding navigation ───
+  obGo(n) {
+    const s = this._state;
+    if (s.gender && this._QS[s.gender]) {
+      const q = this._QS[s.gender];
+      const q2 = document.getElementById('obQ2'); if (q2) q2.textContent = q.q2;
+      const q3 = document.getElementById('obQ3'); if (q3) q3.textContent = q.q3;
+      const q4 = document.getElementById('obQ4'); if (q4) q4.textContent = q.q4;
+    }
+    if (n === 5) this._populateReview();
+    document.querySelectorAll('.ob-step').forEach(el => el.classList.remove('active'));
+    const step = document.getElementById('ob' + n);
+    if (step) step.classList.add('active');
+    document.querySelectorAll('.ob-dot').forEach((d, i) => {
+      d.classList.remove('active', 'done');
+      if (i < n - 1) d.classList.add('done');
+      if (i === n - 1) d.classList.add('active');
+    });
+    this._obStep = n;
+    this._validate();
+  },
+
+  _validate() {
+    const s = this._state;
+    const btns = { 1:'obBtn1', 2:'obBtn2', 3:'obBtn3', 4:'obBtn4' };
+    const id = btns[this._obStep];
+    if (!id) return;
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    switch (this._obStep) {
+      case 1: btn.disabled = !(s.name.trim() && s.gender); break;
+      case 2: btn.disabled = !s.date; break;
+      case 3: btn.disabled = !(s.time || s.noTime); break;
+      case 4: btn.disabled = !(s.lat !== null); break;
+    }
+  },
+
+  selectGender(g) {
+    this._state.gender = g;
+    document.querySelectorAll('.ob-gender-btn').forEach(b => b.classList.toggle('selected', b.dataset.gender === g));
+    this._validate();
+  },
+
+  _toggleTime() {
+    const cb = document.getElementById('obNoTime');
+    const inp = document.getElementById('obTime');
+    if (!cb || !inp) return;
+    this._state.noTime = cb.checked;
+    inp.disabled = cb.checked;
+    if (cb.checked) { inp.value = ''; this._state.time = ''; inp.style.opacity = '0.4'; }
+    else { inp.style.opacity = '1'; }
+    const hint = document.getElementById('obTimeHint');
+    if (hint) hint.classList.toggle('visible', cb.checked);
+    this._validate();
+  },
+
+  // ─── Nominatim autocomplete ───
+  _searchPlace(query) {
+    if (query.length < 2) { const l = document.getElementById('obPlaceList'); if (l) l.classList.remove('open'); return; }
+    clearTimeout(this._searchTimeout);
+    this._searchTimeout = setTimeout(async () => {
+      try {
+        const url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(query) + '&format=json&limit=5&addressdetails=1&accept-language=ru';
+        const res = await fetch(url, { headers: { 'User-Agent': 'Dea-Tarot-App/1.0' } });
+        const data = await res.json();
+        const list = document.getElementById('obPlaceList');
+        if (!list) return;
+        list.innerHTML = '';
+        const cities = data.filter(d => ['city','town','village','municipality'].includes(d.type) || d.class === 'place').slice(0, 5);
+        const results = cities.length ? cities : data.slice(0, 5);
+        results.forEach(d => {
+          const div = document.createElement('div');
+          div.className = 'ob-ac-item';
+          const name = d.address?.city || d.address?.town || d.address?.village || d.name || d.display_name.split(',')[0];
+          const country = d.address?.country || '';
+          const region = d.address?.state || d.address?.county || '';
+          const detail = [region, country].filter(Boolean).join(', ');
+          div.innerHTML = '<div class="aci-name">' + name + '</div><div class="aci-detail">' + detail + '</div>';
+          div.addEventListener('click', () => this._selectPlace(name, detail, parseFloat(d.lat), parseFloat(d.lon)));
+          list.appendChild(div);
+        });
+        list.classList.toggle('open', results.length > 0);
+      } catch (e) { log('warn', 'Nominatim error:', e); }
+    }, 400);
+  },
+
+  _selectPlace(name, detail, lat, lng) {
+    this._state.place = name + (detail ? ', ' + detail : '');
+    this._state.lat = lat;
+    this._state.lng = lng;
+    const inp = document.getElementById('obPlace'); if (inp) inp.value = name;
+    const list = document.getElementById('obPlaceList'); if (list) list.classList.remove('open');
+    const pc = document.getElementById('obPlaceConfirm');
+    if (pc) { pc.textContent = this._state.place + ' (' + lat.toFixed(2) + '°, ' + lng.toFixed(2) + '°)'; pc.classList.add('visible'); }
+    this._validate();
+  },
+
+  _populateReview() {
+    const s = this._state;
+    const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    el('obRevName', s.name);
+    el('obRevGender', s.gender === 'female' ? 'Женский' : 'Мужской');
+    if (s.date) {
+      const [y, m, d] = s.date.split('-');
+      el('obRevDate', parseInt(d) + ' ' + this._MONTHS[parseInt(m) - 1] + ' ' + y);
+    }
+    el('obRevTime', s.noTime ? 'не указано' : s.time);
+    el('obRevPlace', s.place);
+  },
+
+  // ─── Calculate ───
+  async calculate() {
+    const btn = document.getElementById('obCalcBtn');
+    if (btn) btn.disabled = true;
+    const lo = document.getElementById('natalLoading');
+    if (lo) lo.classList.add('visible');
+
+    const s = this._state;
+    const [y, m, d] = s.date.split('-').map(Number);
+    let hour = null, minute = null;
+    if (s.time && !s.noTime) { [hour, minute] = s.time.split(':').map(Number); }
+
+    try {
+      const res = await fetch(API.proxyUrl + '/natal', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: y, month: m, day: d, hour, minute, latitude: s.lat, longitude: s.lng }),
+      });
+      this._data = await res.json();
+      if (lo) lo.classList.remove('visible');
+
+      // Save to Firestore
+      await this._saveToFirestore(y, m, d, hour, minute);
+
+      // Update Profile data for buildContext compatibility
+      this._syncToProfile();
+
+      this.renderChart();
+    } catch (e) {
+      if (lo) lo.classList.remove('visible');
+      if (btn) btn.disabled = false;
+      Notify.show('Ошибка расчёта: ' + e.message, 'error');
+    }
+  },
+
+  async _saveToFirestore(year, month, day, hour, minute) {
+    const uid = window._uid;
+    if (!uid) return;
+    const s = this._state;
+    const doc = {
+      name: s.name, gender: s.gender,
+      birth: { date: s.date, time: s.noTime ? '' : s.time, place: s.place },
+      natal: {
+        year, month, day, hour, minute,
+        latitude: s.lat, longitude: s.lng,
+        planets: this._data.planets,
+        ascendant: this._data.ascendant,
+      },
+    };
+    try {
+      await window.db.collection('users').doc(uid).set(doc, { merge: true });
+      log('info', 'Natal data saved to Firestore');
+    } catch (e) {
+      log('warn', 'Natal Firestore save error:', e.message);
+      Notify.show('Карта рассчитана, но не сохранена в облако', 'info');
+    }
+  },
+
+  _syncToProfile() {
+    const s = this._state;
+    Profile._data = { name: s.name, gender: s.gender, birth: { date: s.date, time: s.noTime ? '' : s.time, place: s.place } };
+    Store.set(CONFIG.storageKeys.profile, Profile._data);
+    Profile.updateBadge();
+  },
+
+  // ─── Load from Firestore (called on login) ───
+  loadFromFirestore(firestoreData) {
+    if (!firestoreData || !firestoreData.natal || !firestoreData.natal.planets) return false;
+    const n = firestoreData.natal;
+    this._state = {
+      name: firestoreData.name || '',
+      gender: firestoreData.gender || '',
+      date: firestoreData.birth?.date || '',
+      time: firestoreData.birth?.time || '',
+      noTime: !firestoreData.birth?.time,
+      place: firestoreData.birth?.place || '',
+      lat: n.latitude, lng: n.longitude,
+    };
+    this._data = { planets: n.planets, ascendant: n.ascendant };
+    return true;
+  },
+
+  // ─── Render natal chart ───
+  renderChart() {
+    const ob = document.getElementById('natalOnboard');
+    const disp = document.getElementById('natalDisplay');
+    const tabs = document.getElementById('natalSubtabs');
+    if (ob) ob.style.display = 'none';
+    if (disp) disp.style.display = '';
+    if (tabs) tabs.style.display = '';
+
+    const s = this._state;
+    const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+
+    // Header
+    el('natalDispName', s.name);
+    el('drawerUserName', s.name);
+    const [y, m, d] = s.date ? s.date.split('-') : ['', '', ''];
+    const dateStr = d ? (parseInt(d) + ' ' + this._MONTHS[parseInt(m) - 1] + ' ' + y) : '';
+    const timeStr = (s.time && !s.noTime) ? ' · ' + s.time : '';
+    const cityName = s.place ? s.place.split(',')[0] : '';
+    el('natalDispDate', dateStr + timeStr + (cityName ? ' · ' + cityName : ''));
+
+    // Big Three
+    const sun = this._data.planets?.sun;
+    const moon = this._data.planets?.moon;
+    const asc = this._data.ascendant;
+    const bigThree = [];
+
+    if (moon) { const si = this._SIGNS[moon.sign]; bigThree.push({ pos:'side left', symbol:this._PLANETS.moon.symbol, label:'Луна', sign:si?.ru||moon.sign, degree:this._fmtDeg(moon.degree), el:si?.element||'water', elRu:si?.elRu||'', illust:si?.symbol||'☽', cls:si?.element||'water' }); }
+    if (sun) { const si = this._SIGNS[sun.sign]; bigThree.push({ pos:'center', symbol:this._PLANETS.sun.symbol, label:'Солнце', sign:si?.ru||sun.sign, degree:this._fmtDeg(sun.degree), el:si?.element||'fire', elRu:si?.elRu||'', illust:si?.symbol||'☉', cls:si?.element||'fire' }); }
+    if (asc) { const si = this._SIGNS[asc.sign]; bigThree.push({ pos:'side right', symbol:'AC', label:'Асцендент', sign:si?.ru||asc.sign, degree:this._fmtDeg(asc.degree), el:si?.element||'air', elRu:si?.elRu||'', illust:si?.symbol||'AC', cls:si?.element||'air' }); }
+    else { bigThree.push({ pos:'side right', symbol:'?', label:'Асцендент', sign:'—', degree:'—', el:'earth', elRu:'—', illust:'?', cls:'earth', disabled:true }); }
+
+    this._revealData = bigThree.map(b => ({...b, reading: 'Интерпретация ' + b.label + ' в знаке ' + b.sign + ' будет сгенерирована AI...'}));
+
+    const container = document.getElementById('natalBigThree');
+    if (container) {
+      container.innerHTML = bigThree.map((b, i) =>
+        '<div class="hero-card ' + b.pos + ' ' + b.cls + '" data-action="natal-reveal-open" data-idx="' + i + '"' + (b.disabled ? ' style="opacity:0.4;pointer-events:none"' : '') + '>' +
+        '<div class="hc-illust">' + b.illust + '</div><div class="hc-body">' +
+        '<span class="hc-planet">' + b.symbol + '</span>' +
+        '<div class="hc-label">' + b.label + '</div>' +
+        '<div class="hc-sign">' + b.sign + '</div>' +
+        '<div class="hc-deg">' + b.degree + '</div>' +
+        '<div class="hc-el">' + b.elRu + '</div>' +
+        '</div></div>'
+      ).join('');
+    }
+
+    // Mirror sub
+    const venus = this._data.planets?.venus ? this._SIGNS[this._data.planets.venus.sign]?.ru || '' : '—';
+    const mars = this._data.planets?.mars ? this._SIGNS[this._data.planets.mars.sign]?.ru || '' : '—';
+    const ascSign = asc ? (this._SIGNS[asc.sign]?.ru || '') : '—';
+    el('natalMirrorSub', 'Асцендент в ' + ascSign + ' · Венера в ' + venus + ' · Марс в ' + mars);
+
+    // About subscreen
+    const aboutCard = document.getElementById('natalAboutCard');
+    if (aboutCard) {
+      let h = '<div class="nc-about-row"><div class="nc-about-label">Имя</div><div class="nc-about-value">' + s.name + '</div></div>';
+      h += '<div class="nc-about-row"><div class="nc-about-label">Пол</div><div class="nc-about-value">' + (s.gender === 'female' ? 'Женский' : 'Мужской') + '</div></div>';
+      h += '<div class="nc-about-row"><div class="nc-about-label">Дата</div><div class="nc-about-value">' + dateStr + '</div></div>';
+      h += '<div class="nc-about-row"><div class="nc-about-label">Время</div><div class="nc-about-value">' + (s.noTime ? 'не указано' : s.time) + '</div></div>';
+      h += '<div class="nc-about-row"><div class="nc-about-label">Место</div><div class="nc-about-value">' + s.place + '</div></div>';
+      h += '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px"><div class="nc-about-label" style="margin-bottom:10px">Планеты</div>';
+      for (const [k, v] of Object.entries(this._data.planets || {})) {
+        const si = this._SIGNS[v.sign]; const pm = this._PLANETS[k];
+        if (pm) h += '<div class="nc-about-row"><div class="nc-about-value">' + pm.symbol + ' ' + pm.ru + '</div><div class="nc-about-value">' + (si?.ru || v.sign) + ' ' + this._fmtDeg(v.degree) + '</div></div>';
+      }
+      if (asc) { h += '<div class="nc-about-row"><div class="nc-about-value">AC Асцендент</div><div class="nc-about-value">' + (this._SIGNS[asc.sign]?.ru||'') + ' ' + this._fmtDeg(asc.degree) + '</div></div>'; }
+      h += '</div>';
+      aboutCard.innerHTML = h;
+    }
+
+    this.showSubtab('chart');
+  },
+
+  // ─── Subtabs ───
+  showSubtab(name) {
+    const map = { chart:'natalSubChart', about:'natalSubAbout', history:'natalSubHistory' };
+    document.querySelectorAll('.natal-subscreen').forEach(s => s.classList.remove('active'));
+    const el = document.getElementById(map[name]);
+    if (el) el.classList.add('active');
+    document.querySelectorAll('.natal-subtab').forEach((t, i) => {
+      t.classList.toggle('active', ['chart','about','history'][i] === name);
+    });
+    if (name === 'history' && typeof History !== 'undefined') History.render();
+  },
+
+  // ─── Reveal ───
+  openReveal(idx) {
+    const d = this._revealData[idx]; if (!d) return;
+    const o = document.getElementById('natalReveal');
+    const c = document.getElementById('natalRevealCard');
+    if (!o || !c) return;
+    c.className = 'nr-card ' + d.cls;
+    const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    el('nrIllust', d.illust); el('nrSymbol', d.symbol); el('nrLabel', d.label);
+    el('nrSign', d.sign); el('nrDeg', d.degree); el('nrElement', d.elRu);
+    el('nrReading', d.reading);
+    o.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  },
+
+  closeReveal() {
+    const o = document.getElementById('natalReveal');
+    if (o) o.classList.remove('open');
+    document.body.style.overflow = '';
+  },
+
+  // ─── Reset (dev) ───
+  async reset() {
+    const uid = window._uid;
+    if (uid) {
+      try { await window.db.collection('users').doc(uid).update({ natal: firebase.firestore.FieldValue.delete() }); } catch(e) { log('warn', 'Natal reset error:', e); }
+    }
+    this._state = { name:'', gender:'', date:'', time:'', noTime:false, place:'', lat:null, lng:null };
+    this._data = null;
+    // Reset form fields
+    const ids = ['obName','obDate','obTime','obPlace'];
+    ids.forEach(id => { const e = document.getElementById(id); if (e) { e.value = ''; e.disabled = false; e.style.opacity = '1'; } });
+    const nt = document.getElementById('obNoTime'); if (nt) nt.checked = false;
+    const pc = document.getElementById('obPlaceConfirm'); if (pc) pc.classList.remove('visible');
+    const th = document.getElementById('obTimeHint'); if (th) th.classList.remove('visible');
+    document.querySelectorAll('.ob-gender-btn').forEach(b => b.classList.remove('selected'));
+    const cb = document.getElementById('obCalcBtn');
+    if (cb) { cb.disabled = false; cb.innerHTML = '<span class="btn-star">✦</span> Рассчитать мою карту'; }
+    // Switch back to onboard
+    const disp = document.getElementById('natalDisplay'); if (disp) disp.style.display = 'none';
+    const ob = document.getElementById('natalOnboard'); if (ob) ob.style.display = '';
+    const tabs = document.getElementById('natalSubtabs'); if (tabs) tabs.style.display = 'none';
+    this.obGo(1);
+    Notify.show('Натальные данные сброшены', 'info');
+  },
+
+  _fmtDeg(deg) {
+    const d = Math.floor(deg % 30);
+    const m = Math.round(((deg % 30) - d) * 60);
+    return d + '° ' + String(m).padStart(2, '0') + "'";
+  },
+};
+
+
 const App = {
   init(opts = {}) {
-    cacheDOM(); Notify.init();
+    cacheDOM(); Notify.init(); NatalChart.init();
     // Card lightbox: tap on day card opens lightbox
     DOM.cardArea && DOM.cardArea.addEventListener('click', (e) => {
       if (!DOM.cardInner.classList.contains('flipped')) return;
