@@ -664,6 +664,22 @@ h1 { display: none; }
 @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
 .natal-loading-text { margin-top:16px; font-size:14px; color:var(--ink-muted); font-family:var(--font-serif); font-style:italic; }
 
+
+/* ═══ MODE VISIBILITY — hide day/spread elements when on other screens ═══ */
+body[data-mode="profile"] .card-area,
+body[data-mode="profile"] .draw-btn,
+body[data-mode="profile"] .day-timer,
+body[data-mode="profile"] .scroll-hint,
+body[data-mode="profile"] .reading-area,
+body[data-mode="profile"] .api-notice,
+body[data-mode="profile"] .mode-tabs,
+body[data-mode="decks"] .card-area,
+body[data-mode="decks"] .draw-btn,
+body[data-mode="decks"] .day-timer,
+body[data-mode="decks"] .scroll-hint,
+body[data-mode="decks"] .reading-area,
+body[data-mode="decks"] .api-notice,
+body[data-mode="decks"] .mode-tabs { display: none !important; }
 </style>
 
 <!-- Firebase: compat for auth, modular for Firestore (named DB support) -->
@@ -1756,6 +1772,7 @@ const API = {
 // ═══════════════════════════════════════════════════════════════════════════════
 const UI = {
   switchMode(mode) {
+    document.body.dataset.mode = mode;
     const isDay = mode === 'day';
     // Day elements — hide ALL when not day mode
     ['cardArea','readingArea'].forEach(id => { if (DOM[id]) DOM[id].style.display = isDay ? '' : 'none'; });
@@ -2734,7 +2751,12 @@ const NatalChart = {
     const hasAsc = !!this._data.ascendant;
 
     try {
+      // Increase timeout for natal AI (more tokens than day reading)
+      const origTimeout = CONFIG.apiTimeout;
+      CONFIG.apiTimeout = 45000;
       const raw = await API.call({ prompt, maxTokens: hasAsc ? 900 : 600, type: 'day' });
+      CONFIG.apiTimeout = origTimeout;
+      log('info', 'AI raw response length:', raw ? raw.length : 0);
       if (!raw) throw new Error('Пустой ответ от AI');
 
       // Parse JSON — handle possible markdown wrapping
@@ -2742,10 +2764,18 @@ const NatalChart = {
       if (clean.startsWith('```')) clean = clean.replace(/```json?\s*/g, '').replace(/```\s*$/g, '').trim();
       const start = clean.indexOf('{');
       const end = clean.lastIndexOf('}');
-      if (start === -1 || end === -1) throw new Error('Не удалось найти JSON');
+      if (start === -1 || end === -1) {
+        log('error', 'AI response not JSON. First 300 chars:', raw.substring(0, 300));
+        throw new Error('Ответ AI не содержит JSON');
+      }
       clean = clean.substring(start, end + 1);
 
-      this._aiTexts = JSON.parse(clean);
+      try {
+        this._aiTexts = JSON.parse(clean);
+      } catch (parseErr) {
+        log('error', 'JSON parse failed. Extracted:', clean.substring(0, 500));
+        throw new Error('Невалидный JSON от AI');
+      }
 
       if (typeof LoadingRotator !== 'undefined') LoadingRotator.stop();
 
@@ -2761,7 +2791,14 @@ const NatalChart = {
     } catch (e) {
       if (typeof LoadingRotator !== 'undefined') LoadingRotator.stop();
       log('warn', 'AI generation error:', e);
-      if (portEl) { portEl.style.color = 'var(--ink-muted)'; portEl.innerHTML = 'Не удалось сгенерировать портрет. Попробуй позже.'; }
+      if (portEl) {
+        portEl.style.color = 'var(--ink-muted)';
+        portEl.innerHTML = 'Не удалось сгенерировать портрет. <button style="background:none;border:1px solid var(--gold);border-radius:8px;padding:6px 14px;color:var(--gold);cursor:pointer;font-family:var(--font-sans);font-size:12px;margin-top:8px;display:block" onclick="NatalChart._generateAI()">Попробовать ещё раз</button>';
+      }
+      if (mirEl) {
+        mirEl.style.color = 'var(--ink-muted)';
+        mirEl.innerHTML = 'Не удалось загрузить.';
+      }
       Notify.show('AI-портрет не удался — карта рассчитана', 'info');
     }
   },
