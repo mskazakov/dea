@@ -1418,10 +1418,11 @@ const API = {
 // ═══════════════════════════════════════════════════════════════════════════════
 const UI = {
   switchMode(mode) {
+    const isDay = mode === 'day';
     // Day elements
-    ['cardArea','readingArea'].forEach(id => { if (DOM[id]) DOM[id].style.display = mode === 'day' ? '' : 'none'; });
-    const dayTimerEl = document.getElementById('dayTimer'); if (dayTimerEl) dayTimerEl.style.display = (mode === 'day' && DOM.drawBtn.disabled) ? 'block' : 'none';
-    const scrollHintEl = document.getElementById('scrollHint'); if (scrollHintEl && mode !== 'day') scrollHintEl.classList.add('gone');
+    ['cardArea','readingArea'].forEach(id => { if (DOM[id]) DOM[id].style.display = isDay ? '' : 'none'; });
+    const dayTimerEl = document.getElementById('dayTimer'); if (dayTimerEl) dayTimerEl.style.display = (isDay && DOM.drawBtn.disabled) ? 'block' : 'none';
+    const scrollHintEl = document.getElementById('scrollHint'); if (scrollHintEl) { if (!isDay) { scrollHintEl.classList.add('gone'); scrollHintEl.style.display = 'none'; } else { scrollHintEl.style.display = ''; } }
     // Spread
     DOM.spreadSection.classList.toggle('visible', mode === 'spread');
     if (mode === 'spread') Spread.updateHint();
