@@ -1518,7 +1518,6 @@ const SpreadEngine = {
   // ─── Запустить расклад ───────────────────────────────────────────────────────
   async startSpread(spreadDef, { question = '', aiEnabled = true } = {}) {
     if (this._isDrawing) return;
-    if (window.analytics) firebase.analytics().logEvent('spread_started', { spread_id: spreadDef.id, ai_enabled: aiEnabled, deck_id: DeckStore.activeDeckId });
 
     // Проверка dailyLimit: localStorage + Firestore для залогиненных
     if (spreadDef.dailyLimit) {
@@ -1539,6 +1538,8 @@ const SpreadEngine = {
         } catch(e) { log('warn', 'Firestore daily check failed:', e.message); }
       }
     }
+
+    if (window.analytics) firebase.analytics().logEvent('spread_started', { spread_id: spreadDef.id, ai_enabled: aiEnabled, deck_id: DeckStore.activeDeckId });
 
     this._spreadDef = spreadDef;
     this._drawnCards = [];
@@ -1627,6 +1628,7 @@ const SpreadEngine = {
     }
 
     this._finishDay(card, isReversed, reading, reflection);
+    if (window.analytics) firebase.analytics().logEvent('reading_viewed', { spread_id: spreadDef.id, ai: !!parsed });
   },
 
   _finishDay(card, isReversed, reading, reflection) {
@@ -1706,6 +1708,7 @@ const SpreadEngine = {
       DOM.reflectionBox.style.display = 'none';
     }
     this._setDayDrawnState();
+    if (window.analytics) firebase.analytics().logEvent('reading_restored', { spread_id: spreadDef.id });
     return true;
   },
 
