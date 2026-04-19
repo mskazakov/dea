@@ -207,6 +207,24 @@ h1 { display: none; }
 .profile-icon-btn { display: none; }
 .deck-icon-btn    { display: none; }
 
+/* ═══ SCREEN SECTIONS (profile & decks) ═══ */
+.profile-screen {
+  display: none; flex-direction: column; align-items: center;
+  width: 100%; max-width: 560px; padding: 0 24px;
+  animation: fadeUp 0.4s ease both;
+}
+.profile-screen.visible { display: flex; }
+.deck-screen {
+  display: none; flex-direction: column; align-items: center;
+  width: 100%; max-width: 560px; padding: 0 24px;
+  animation: fadeUp 0.4s ease both;
+}
+.deck-screen.visible { display: flex; }
+.screen-title {
+  font-family: var(--font-serif); font-size: 24px; font-weight: 300;
+  color: var(--ink); text-align: center; margin-bottom: 24px;
+}
+
 /* ═══ TAB BAR ═══ */
 .tab-bar {
   position: fixed; bottom: 0; left: 0; right: 0; height: var(--tab-h);
@@ -239,14 +257,12 @@ h1 { display: none; }
   background: var(--gold);
   border-radius: 0 0 2px 2px;
 }
-.deck-drawer-overlay { position: fixed; inset: 0; background: rgba(26,24,20,0.3); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
-.deck-drawer-overlay.open { opacity: 1; pointer-events: all; }
-.deck-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 92vw); background: var(--surface); z-index: 301; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; box-shadow: -8px 0 40px rgba(0,0,0,0.10); overflow-y: auto; }
-.deck-drawer.open { transform: translateX(0); }
-.profile-drawer-overlay { position: fixed; inset: 0; background: rgba(26,24,20,0.3); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
-.profile-drawer-overlay.open { opacity: 1; pointer-events: all; }
-.profile-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 92vw); background: var(--surface); z-index: 301; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; box-shadow: -8px 0 40px rgba(0,0,0,0.10); overflow-y: auto; }
-.profile-drawer.open { transform: translateX(0); }
+
+
+
+
+
+
 .drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 24px 24px 0; flex-shrink: 0; }
 .drawer-title { font-family: var(--font-serif); font-size: 24px; font-weight: 300; }
 .drawer-close { background: none; border: none; font-size: 22px; color: var(--ink-muted); cursor: pointer; padding: 4px; line-height: 1; transition: color 0.2s; }
@@ -555,24 +571,15 @@ window.loadHistory = async function() {
   <span class="deck-btn-label">Колоды</span>
 </button>
 
-<div class="deck-drawer-overlay" id="deckDrawerOverlay" data-action="close-deck-drawer" aria-hidden="true"></div>
-<div class="deck-drawer" id="deckDrawer" role="dialog" aria-modal="true" aria-label="Колода" data-testid="deck-drawer">
-  <div class="drawer-header">
-    <span class="drawer-title">Колода</span>
-    <button class="drawer-close" data-action="close-deck-drawer" aria-label="Закрыть">✕</button>
-  </div>
-  <div class="drawer-section" style="padding-top:16px;">
-    <div class="deck-list" id="deckList"></div>
-  </div>
+<div class="deck-screen" id="deckScreen" data-testid="deck-screen">
+  <div class="screen-title">Колоды</div>
+  <div class="deck-list" id="deckList" style="width:100%"></div>
 </div>
 
-<div class="profile-drawer-overlay" id="drawerOverlay" data-action="close-drawer" aria-hidden="true"></div>
 
-<div class="profile-drawer" id="profileDrawer" role="dialog" aria-modal="true" aria-label="Профиль" data-testid="profile-drawer">
-  <div class="drawer-header">
-    <span class="drawer-title">Профиль</span>
-    <button class="drawer-close" data-action="close-drawer" aria-label="Закрыть профиль">✕</button>
-  </div>
+
+<div class="profile-screen" id="profileScreen" data-testid="profile-screen">
+  <div class="screen-title">Моя карта</div>
   <div id="drawerLoggedOut" style="display:block">
     <div class="drawer-section" style="padding-top:24px;">
       <div class="drawer-logged-out-text">Войди через Google — и твой профиль, натальные данные и история раскладов будут сохранены в облаке и доступны с любого устройства.</div>
@@ -620,7 +627,7 @@ window.loadHistory = async function() {
 
 <header>
   <div class="date-label" id="dateLabel"></div>
-  <div id="natalBadge" class="natal-badge" style="display:none" data-action="open-drawer"><span class="nb-sign" id="natalSign"></span><span id="natalText"></span></div>
+  <div id="natalBadge" class="natal-badge" style="display:none" data-action="mode-profile"><span class="nb-sign" id="natalSign"></span><span id="natalText"></span></div>
 </header>
 
 <div class="mode-tabs">
@@ -869,14 +876,12 @@ function cacheDOM() {
    'arcanaLabel','cardImage','cardSymbolFallback','cardName','cardReversedBadge','cardKeywords','resetMsg',
    'tabDay','tabSpread','spreadSection','spreadDropdownBtn','spreadDropdownMenu',
    'spreadDropdownTitle','spreadDropdownDesc','spreadHint','spreadQuestion','spreadDrawBtn',
-   'spreadCardsRow','spreadReadingBox','spreadReadingContent','profileDrawer','drawerOverlay',
+   'spreadCardsRow','spreadReadingBox','spreadReadingContent',
    'natalBadge','natalSign','natalText','birthDate','birthTime','birthPlace','userName',
    'userGender','profileSavedMsg','historyList','spreadPicker',
    'reflectionBox','reflectionText','aiToggle'
   ].forEach(id => { DOM[id] = document.getElementById(id); });
   DOM.deckIconBtn = document.getElementById('deckIconBtn');
-  DOM.deckDrawer = document.getElementById('deckDrawer');
-  DOM.deckDrawerOverlay = document.getElementById('deckDrawerOverlay');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1213,8 +1218,8 @@ const Profile = {
     return '\n\nКонтекст пользователя: ' + parts.join(', ') + '.' + nameStr + genderStr + ' ' + dateCtx + ' Тонко учти эти данные — не перечисляй их дословно.';
   },
 
-  open() { DOM.profileDrawer.classList.add('open'); DOM.drawerOverlay.classList.add('open'); document.body.style.overflow = 'hidden'; const f = DOM.profileDrawer.querySelector('button, input, select, textarea'); if (f) f.focus(); },
-  close() { DOM.profileDrawer.classList.remove('open'); DOM.drawerOverlay.classList.remove('open'); document.body.style.overflow = ''; document.getElementById('profileIconBtn').focus(); },
+  open() { UI.switchMode('profile'); },
+  close() { UI.switchMode('day'); },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1413,12 +1418,23 @@ const API = {
 // ═══════════════════════════════════════════════════════════════════════════════
 const UI = {
   switchMode(mode) {
+    // Day elements
     ['cardArea','readingArea'].forEach(id => { if (DOM[id]) DOM[id].style.display = mode === 'day' ? '' : 'none'; });
     const dayTimerEl = document.getElementById('dayTimer'); if (dayTimerEl) dayTimerEl.style.display = (mode === 'day' && DOM.drawBtn.disabled) ? 'block' : 'none';
-    DOM.tabDay.classList.toggle('active', mode === 'day');
-    DOM.tabSpread.classList.toggle('active', mode === 'spread');
+    const scrollHintEl = document.getElementById('scrollHint'); if (scrollHintEl && mode !== 'day') scrollHintEl.classList.add('gone');
+    // Spread
     DOM.spreadSection.classList.toggle('visible', mode === 'spread');
     if (mode === 'spread') Spread.updateHint();
+    // Profile & Decks screens
+    const profileScreen = document.getElementById('profileScreen');
+    const deckScreen = document.getElementById('deckScreen');
+    if (profileScreen) profileScreen.classList.toggle('visible', mode === 'profile');
+    if (deckScreen) deckScreen.classList.toggle('visible', mode === 'decks');
+    // Header: hide on profile/decks
+    const header = document.querySelector('header');
+    if (header) header.style.display = (mode === 'profile' || mode === 'decks') ? 'none' : '';
+    // Scroll to top on mode change
+    window.scrollTo({ top: 0, behavior: 'instant' });
   },
   async typeText(el, text) { el.innerHTML = ''; const w = text.split(' '); for (let i=0;i<w.length;i++) { el.innerHTML += (i>0?' ':'')+w[i]; if (i%4===0) await sleep(CONFIG.typewriterDelay); } },
   startCountdown() {
@@ -2007,10 +2023,10 @@ document.addEventListener('click', (e) => {
   if (!target) return;
   const actions = {
     'draw-card':          () => CardOfDay.draw(),
-    'open-drawer':        () => Profile.open(),
-    'close-drawer':       () => Profile.close(),
-    'open-deck-drawer':   () => DeckDrawer.open(),
-    'close-deck-drawer':  () => DeckDrawer.close(),
+    'mode-profile':       () => UI.switchMode('profile'),
+    
+    'mode-decks':         () => UI.switchMode('decks'),
+    
     'save-profile':       () => Profile.save(),
     'reset-today':        () => CardOfDay.reset(),
     'mode-day':           () => UI.switchMode('day'),
@@ -2040,29 +2056,19 @@ document.addEventListener('click', (e) => { if (DOM.spreadPicker && !DOM.spreadP
 // KEYBOARD ACCESSIBILITY
 // ═══════════════════════════════════════════════════════════════════════════════
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { CardLightbox.close(); if (DOM.deckDrawer.classList.contains('open')) DeckDrawer.close(); if (DOM.profileDrawer.classList.contains('open')) Profile.close(); if (DOM.spreadDropdownMenu.classList.contains('open')) Spread.closeDropdown(); }
+  if (e.key === 'Escape') { CardLightbox.close(); if (DOM.spreadDropdownMenu.classList.contains('open')) Spread.closeDropdown(); }
   if ((e.key === 'Enter' || e.key === ' ') && document.activeElement === DOM.cardBack) { e.preventDefault(); CardOfDay.draw(); }
 });
 
 // Card day lightbox: tap on flipped card opens lightbox
 
 
-DOM.profileDrawer && DOM.profileDrawer.addEventListener('keydown', (e) => {
-  if (e.key !== 'Tab') return;
-  const focusable = DOM.profileDrawer.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
-  if (!focusable.length) return;
-  const first = focusable[0], last = focusable[focusable.length - 1];
-  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-});
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DECK DRAWER — шторка выбора колоды
 // ═══════════════════════════════════════════════════════════════════════════════
-const DeckDrawer = {
-  open() { DOM.deckDrawer.classList.add('open'); DOM.deckDrawerOverlay.classList.add('open'); document.body.style.overflow = 'hidden'; },
-  close() { DOM.deckDrawer.classList.remove('open'); DOM.deckDrawerOverlay.classList.remove('open'); document.body.style.overflow = ''; DOM.deckIconBtn.focus(); },
-};
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DECK UI — выбор колоды
@@ -2123,7 +2129,7 @@ App.init();
 <!-- ═══ TAB BAR ═══ -->
 <nav class="tab-bar" id="tabBar" role="navigation" aria-label="Навигация">
 
-  <button class="tab-item" id="tabProfile" data-action="open-drawer" aria-label="Профиль">
+  <button class="tab-item" id="tabProfile" data-action="mode-profile" aria-label="Профиль">
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.3"/>
       <path d="M3 18c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
@@ -2148,7 +2154,7 @@ App.init();
     <span>Расклад</span>
   </button>
 
-  <button class="tab-item" id="tabDecks" data-action="open-deck-drawer" aria-label="Колоды">
+  <button class="tab-item" id="tabDecks" data-action="mode-decks" aria-label="Колоды">
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="2" y="5" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.3"/>
       <path d="M6 5V3.5A1.5 1.5 0 0 1 7.5 2h9A1.5 1.5 0 0 1 18 3.5v12A1.5 1.5 0 0 1 16.5 17H15" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
@@ -2178,7 +2184,8 @@ App.init();
     const _origSwitch = UI.switchMode.bind(UI);
     UI.switchMode = function(mode) {
       _origSwitch(mode);
-      setActiveTab(mode === 'day' ? 'tabDay' : 'tabSpread');
+      const tabMap = { day: 'tabDay', spread: 'tabSpread', profile: 'tabProfile', decks: 'tabDecks' };
+      setActiveTab(tabMap[mode] || 'tabDay');
     };
   }
 
@@ -2188,7 +2195,7 @@ App.init();
       const lbl    = document.getElementById('tabProfileLabel');
       const avatar = document.getElementById('userAvatar');
       if (user) {
-        if (lbl) lbl.textContent = user.displayName ? user.displayName.split(' ')[0] : 'Профиль';
+        if (lbl) lbl.textContent = 'Моя карта';
         if (avatar && user.photoURL) avatar.src = user.photoURL;
       } else {
         if (lbl) lbl.textContent = 'Войти';
