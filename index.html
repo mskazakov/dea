@@ -2458,6 +2458,7 @@ const DeckUI = {
 const NatalChart = {
   _state: { name:'', gender:'', date:'', time:'', noTime:false, place:'', lat:null, lng:null },
   _data: null, // { planets, ascendant }
+  _aiTexts: null, // { portrait, mirror, mirrorTraits, sun, moon, asc }
   _revealData: [],
   _obStep: 1,
   _searchTimeout: null,
@@ -2647,6 +2648,9 @@ const NatalChart = {
       this._syncToProfile();
 
       this.renderChart();
+
+      // Generate AI texts (async, non-blocking for chart display)
+      this._generateAI();
     } catch (e) {
       if (lo) lo.classList.remove('visible');
       if (btn) btn.disabled = false;
@@ -2684,6 +2688,112 @@ const NatalChart = {
     Profile.updateBadge();
   },
 
+
+  // ─── AI text generation ───
+  _buildAIPrompt() {
+    const s = this._state;
+    const p = this._data.planets || {};
+    const asc = this._data.ascendant;
+    const S = this._SIGNS;
+    const signRu = (key) => S[key]?.ru || key;
+
+    const planets = '\u2609' + signRu(p.sun?.sign) +
+      ' \u263D' + signRu(p.moon?.sign) +
+      ' \u263F' + signRu(p.mercury?.sign) +
+      ' \u2640' + signRu(p.venus?.sign) +
+      ' \u2642' + signRu(p.mars?.sign) +
+      ' \u2643' + signRu(p.jupiter?.sign) +
+      ' \u2644' + signRu(p.saturn?.sign) +
+      (asc ? ' AC' + signRu(asc.sign) : '');
+
+    const gender = s.gender === 'female' ? 'женский' : 'мужской';
+    const hasAsc = !!asc;
+
+    let schema;
+    if (hasAsc) {
+      schema = '{"portrait":"3 абзаца: кто этот человек внутри. Учти все планеты. Без перечисления планет.","mirror":"1 абзац: какое впечатление производит, как видят другие. На основе AC+♀+♂.","mirrorTraits":["4 черты в формате trait:element где element=fire/water/air/earth"],"sun":"3-4 предложения: Солнце, ядро личности.","moon":"3-4 предложения: Луна, эмоции и потребности.","asc":"3-4 предложения: Асцендент, маска и первое впечатление."}';
+    } else {
+      schema = '{"portrait":"3 абзаца: кто этот человек внутри. Учти все планеты. Без перечисления планет.","sun":"3-4 предложения: Солнце, ядро личности.","moon":"3-4 предложения: Луна, эмоции и потребности."}';
+    }
+
+    return 'Натальная карта. ' + s.name + ', ' + gender + '.\n' + planets + '\n\nОтветь ТОЛЬКО валидным JSON без markdown:\n' + schema + '\n\nПо-русски, на ты, ' + gender + ' род. Без эзотерического жаргона. Тёплый тон, как хороший гороскоп.';
+  },
+
+  async _generateAI() {
+    const lo = document.getElementById('natalLoading');
+    const lt = lo?.querySelector('.natal-loading-text');
+    if (lt) lt.textContent = 'Составляю портрет...';
+    if (lo) lo.classList.add('visible');
+
+    const prompt = this._buildAIPrompt();
+    const hasAsc = !!this._data.ascendant;
+
+    try {
+      const raw = await API.call({ prompt, maxTokens: hasAsc ? 900 : 600, type: 'day' });
+      if (!raw) throw new Error('Пустой ответ от AI');
+
+      // Parse JSON — handle possible markdown wrapping
+      let clean = raw.trim();
+      if (clean.startsWith('```')) clean = clean.replace(/```json?\s*/g, '').replace(/```\s*$/g, '').trim();
+      // Find first { and last }
+      const start = clean.indexOf('{');
+      const end = clean.lastIndexOf('}');
+      if (start === -1 || end === -1) throw new Error('Не удалось найти JSON');
+      clean = clean.substring(start, end + 1);
+
+      this._aiTexts = JSON.parse(clean);
+
+      // Save to Firestore
+      const uid = window._uid;
+      if (uid) {
+        try {
+          await window.db.collection('users').doc(uid).set({ natal: { aiTexts: this._aiTexts } }, { merge: true });
+        } catch (e) { log('warn', 'AI texts Firestore save error:', e); }
+      }
+
+      if (lo) lo.classList.remove('visible');
+      this._applyAITexts();
+    } catch (e) {
+      if (lo) lo.classList.remove('visible');
+      log('warn', 'AI generation error:', e);
+      Notify.show('Карта рассчитана, но AI-портрет не удался', 'info');
+    }
+  },
+
+  _applyAITexts() {
+    if (!this._aiTexts) return;
+    const t = this._aiTexts;
+
+    // Portrait
+    const portEl = document.getElementById('natalPortraitText');
+    if (portEl && t.portrait) {
+      portEl.style.color = ''; portEl.style.fontStyle = '';
+      portEl.innerHTML = t.portrait.split('\n\n').map(p => '<p>' + p + '</p>').join('');
+    }
+
+    // Mirror
+    const mirEl = document.getElementById('natalMirrorText');
+    if (mirEl && t.mirror) { mirEl.style.color = ''; mirEl.style.fontStyle = ''; mirEl.textContent = t.mirror; }
+
+    // Mirror traits
+    const trEl = document.getElementById('natalMirrorTraits');
+    if (trEl && t.mirrorTraits && t.mirrorTraits.length) {
+      trEl.innerHTML = t.mirrorTraits.map(tr => {
+        const parts = tr.split(':');
+        const trait = parts[0]?.trim() || tr;
+        const el = parts[1]?.trim() || 'air';
+        return '<span class="nc-trait ' + el + '">' + trait + '</span>';
+      }).join('');
+    }
+
+    // Big Three reveal readings
+    if (this._revealData.length >= 2) {
+      if (t.moon && this._revealData[0]) this._revealData[0].reading = t.moon;
+      if (t.sun && this._revealData[1]) this._revealData[1].reading = t.sun;
+      if (t.asc && this._revealData[2]) this._revealData[2].reading = t.asc;
+    }
+  },
+
   // ─── Load from Firestore (called on login) ───
   loadFromFirestore(firestoreData) {
     if (!firestoreData || !firestoreData.natal || !firestoreData.natal.planets) return false;
@@ -2698,6 +2808,7 @@ const NatalChart = {
       lat: n.latitude, lng: n.longitude,
     };
     this._data = { planets: n.planets, ascendant: n.ascendant };
+    this._aiTexts = n.aiTexts || null;
     return true;
   },
 
@@ -2755,6 +2866,17 @@ const NatalChart = {
     const ascSign = asc ? (this._SIGNS[asc.sign]?.ru || '') : '—';
     el('natalMirrorSub', 'Асцендент в ' + ascSign + ' · Венера в ' + venus + ' · Марс в ' + mars);
 
+    // Hide mirror section if no ascendant
+    const mirrorSection = document.getElementById('natalMirrorText')?.closest('.nc-mirror');
+    const mirrorDivider = mirrorSection?.previousElementSibling;
+    if (!asc) {
+      if (mirrorSection) mirrorSection.style.display = 'none';
+      if (mirrorDivider) mirrorDivider.style.display = 'none';
+    } else {
+      if (mirrorSection) mirrorSection.style.display = '';
+      if (mirrorDivider) mirrorDivider.style.display = '';
+    }
+
     // About subscreen
     const aboutCard = document.getElementById('natalAboutCard');
     if (aboutCard) {
@@ -2774,6 +2896,9 @@ const NatalChart = {
     }
 
     this.showSubtab('chart');
+
+    // Apply AI texts if already loaded
+    this._applyAITexts();
   },
 
   // ─── Subtabs ───
@@ -2817,6 +2942,7 @@ const NatalChart = {
     }
     this._state = { name:'', gender:'', date:'', time:'', noTime:false, place:'', lat:null, lng:null };
     this._data = null;
+    this._aiTexts = null;
     // Reset form fields
     const ids = ['obName','obDate','obTime','obPlace'];
     ids.forEach(id => { const e = document.getElementById(id); if (e) { e.value = ''; e.disabled = false; e.style.opacity = '1'; } });
