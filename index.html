@@ -733,7 +733,14 @@ auth.onAuthStateChanged(async (user) => {
     document.getElementById('drawerUserName').textContent = user.displayName || '';
     document.getElementById('drawerUserEmail').textContent = user.email || '';
     const nameField = document.getElementById('obName') || document.getElementById('userName');
-    if (nameField && !nameField.value && user.displayName) nameField.value = user.displayName.split(' ')[0];
+    if (nameField && !nameField.value && user.displayName) {
+      nameField.value = user.displayName.split(' ')[0];
+      // Sync to NatalChart state so validation picks it up
+      if (typeof NatalChart !== 'undefined') {
+        NatalChart._state.name = nameField.value;
+        NatalChart._validate();
+      }
+    }
     if (user.photoURL) {
       document.getElementById('userAvatar').src = user.photoURL;
       document.getElementById('userAvatar').style.display = 'block';
@@ -2737,6 +2744,8 @@ const NatalChart = {
     return s.name + ', ' + gender + '. ' + planets + '\n\n' + tone + '\n\nОтветь ТОЛЬКО валидным JSON:\n' + schema;
   },
 
+  _aiRetries: 0,
+
   async _generateAI() {
     // Show inline loading in portrait and mirror blocks (non-blocking)
     const portEl = document.getElementById('natalPortraitText');
@@ -2776,6 +2785,7 @@ const NatalChart = {
         throw new Error('Невалидный JSON от AI');
       }
 
+      this._aiRetries = 0;
       if (typeof LoadingRotator !== 'undefined') LoadingRotator.stop();
 
       // Save to Firestore
@@ -2790,15 +2800,23 @@ const NatalChart = {
     } catch (e) {
       if (typeof LoadingRotator !== 'undefined') LoadingRotator.stop();
       log('warn', 'AI generation error:', e);
+      // Auto-retry once
+      if (this._aiRetries < 1) {
+        this._aiRetries++;
+        log('info', 'AI auto-retry attempt', this._aiRetries);
+        setTimeout(() => this._generateAI(), 1500);
+        return;
+      }
+      this._aiRetries = 0;
       if (portEl) {
-        portEl.style.color = 'var(--ink-muted)';
-        portEl.innerHTML = 'Не удалось сгенерировать портрет. <button style="background:none;border:1px solid var(--gold);border-radius:8px;padding:6px 14px;color:var(--gold);cursor:pointer;font-family:var(--font-sans);font-size:12px;margin-top:8px;display:block" onclick="NatalChart._generateAI()">Попробовать ещё раз</button>';
+        portEl.style.color = 'var(--ink-muted)'; portEl.style.fontStyle = '';
+        portEl.innerHTML = 'Не удалось сгенерировать портрет. <button style="background:none;border:1px solid var(--gold);border-radius:8px;padding:6px 14px;color:var(--gold);cursor:pointer;font-family:var(--font-sans);font-size:12px;margin-top:8px;display:block" onclick="NatalChart._aiRetries=0;NatalChart._generateAI()">Попробовать ещё раз</button>';
       }
       if (mirEl) {
-        mirEl.style.color = 'var(--ink-muted)';
+        mirEl.style.color = 'var(--ink-muted)'; mirEl.style.fontStyle = '';
         mirEl.innerHTML = 'Не удалось загрузить.';
       }
-      Notify.show('AI-портрет не удался — карта рассчитана', 'info');
+      Notify.show('AI-портрет не удался — попробуй кнопку ниже', 'info');
     }
   },
 
